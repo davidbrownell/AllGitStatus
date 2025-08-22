@@ -10,6 +10,7 @@ source = { editable = "." }
 [package.dev-dependencies]
 dev = [
     { name = "autogitsemver" },
+    { name = "dbrownell-commitemojis" },
     { name = "pre-commit" },
     { name = "py-minisign" },
     { name = "pytest" },
@@ -22,6 +23,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "autogitsemver", specifier = ">=0.9.1" },
+    { name = "dbrownell-commitemojis", specifier = ">=0.1.4" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "py-minisign", specifier = ">=0.12.0" },
     { name = "pytest", specifier = ">=8.4.1" },
@@ -192,6 +194,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/82/27/092d311af22095d288f4db89fcaebadfb2f28944f3d790a4cf51fe5ddaeb/cryptography-45.0.6-cp37-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:5b64e668fc3528e77efa51ca70fadcd6610e8ab231e3e06ae2bab3b31c2b8ed9", size = 4554815, upload-time = "2025-08-05T23:59:00.283Z" },
     { url = "https://files.pythonhosted.org/packages/7e/01/aa2f4940262d588a8fdf4edabe4cda45854d00ebc6eaac12568b3a491a16/cryptography-45.0.6-cp37-abi3-win32.whl", hash = "sha256:780c40fb751c7d2b0c6786ceee6b6f871e86e8718a8ff4bc35073ac353c7cd02", size = 2912147, upload-time = "2025-08-05T23:59:01.716Z" },
     { url = "https://files.pythonhosted.org/packages/0a/bc/16e0276078c2de3ceef6b5a34b965f4436215efac45313df90d55f0ba2d2/cryptography-45.0.6-cp37-abi3-win_amd64.whl", hash = "sha256:20d15aed3ee522faac1a39fbfdfee25d17b1284bafd808e1640a74846d7c4d1b", size = 3390459, upload-time = "2025-08-05T23:59:03.358Z" },
+]
+
+[[package]]
+name = "dbrownell-commitemojis"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dbrownell-common" },
+    { name = "rich" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/7d/b08f20521dccd5c468c977bc573d61d744d0e568ec240f06a34c74c5c6b0/dbrownell_commitemojis-0.1.4.tar.gz", hash = "sha256:14b4fabcd4609def21f269a2d113f8916cc05222ab732f315edec5040de61de6", size = 231095, upload-time = "2025-07-12T17:55:27.79Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/16/b7/a491b33e6d5b225c9854aab6347a7cf219dc5689e659fa8078d4065d6ef6/dbrownell_commitemojis-0.1.4-py3-none-any.whl", hash = "sha256:ee1cfde1d126d3fa0f82aa96b966fa695a3d23fb1949271665d579e1ddaf5127", size = 13130, upload-time = "2025-07-12T17:55:26.604Z" },
 ]
 
 [[package]]
