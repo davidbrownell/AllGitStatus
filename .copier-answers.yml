@@ -1,0 +1,22 @@
+# Changes here will be overwritten by Copier; DO NOT MODIFY THIS FILE DIRECTLY!
+#
+# This file was generated using copier (https://copier.readthedocs.io/) with the
+# template copier-UvScaffolding (https://github.com/gt-sse-center/copier-UvScaffolding).
+# Additional information (including instructions on how to use this template with copier) is
+# available at https://github.com/gt-sse-center/copier-UvScaffolding.
+#
+
+_commit: v0.3.1
+_src_path: .
+author_email: github@DavidBrownell.com
+author_name: David Brownell
+coverage_badge_gist_id: f15146b1b8fdc0a5d45ac0eb786a84f7
+coverage_badge_gist_username: davidbrownell
+github_host: https://github.com
+github_repo_name: AllGitStatus
+github_username: davidbrownell
+license: MIT
+project_name: AllGitStatus
+python_package_name: AllGitStatus
+python_versions: '3.13'
+sign_artifacts_question: true
