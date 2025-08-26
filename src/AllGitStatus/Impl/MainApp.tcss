@@ -1,0 +1,42 @@
+GetRepositoriesModal {
+    align: center middle;
+}
+
+#GitGroup {
+    height: 2fr;
+
+    #DataTable {
+        border: solid $primary-muted;
+        height: 100%;
+        width: 2fr;
+    }
+
+    #GitLog {
+        background: $primary-background-darken-3;
+        border: solid $primary-muted;
+        height: 100%;
+        width: 1fr;
+    }
+}
+
+#ChangesGroup {
+    height: 1fr;
+
+    #WorkingLog {
+        border: solid $primary-muted;
+        height: 100%;
+        width: 1fr;
+    }
+
+    #LocalLog {
+        border: solid $primary-muted;
+        height: 100%;
+        width: 1fr;
+    }
+
+    #RemoteLog {
+        border: solid $primary-muted;
+        height: 100%;
+        width: 1fr;
+    }
+}
