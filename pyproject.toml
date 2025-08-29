@@ -50,7 +50,9 @@ dev = [
     "py-minisign>=0.12.0",
     "pyfakefs>=5.9.2",
     "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
+    "pytest-textual-snapshot>=1.1.0",
     "ruff>=0.12.10",
     "textual-dev>=1.7.0",
 ]
@@ -62,6 +64,7 @@ omit = [
 
 [tool.pytest.ini_options]
 addopts = "--verbose -vv --capture=no --cov=AllGitStatus --cov-report html --cov-report term --cov-report xml:coverage.xml --cov-fail-under=95.0"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 110

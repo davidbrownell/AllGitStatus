@@ -311,7 +311,13 @@ class MainApp(App):
         self._local_log.clear()
         self._remote_log.clear()
 
-        self.refresh_bindings()
+        from textual.app import ScreenStackError  # BugBug
+
+        try:
+            self.refresh_bindings()
+        except ScreenStackError:
+            # BugBug: Document
+            pass
 
         if not repopulate_changes:
             return

@@ -7,3 +7,4 @@ coverage.xml
 minisign_key.pri
 post_generation_instructions.html
 textual.log
+tests/snapshot_report.html
