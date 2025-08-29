@@ -30,6 +30,9 @@ classifiers = [
 [project.license]
 text = "MIT"
 
+[project.scripts]
+AllGitStatus = "AllGitStatus:__main__.app"
+
 [project.urls]
 Homepage = "https://github.com/davidbrownell/AllGitStatus"
 Documentation = "https://github.com/davidbrownell/AllGitStatus"
@@ -50,6 +53,11 @@ dev = [
     "pytest-cov>=6.2.1",
     "ruff>=0.12.10",
     "textual-dev>=1.7.0",
+]
+
+[tool.coverage.run]
+omit = [
+    "src/AllGitStatus/**/Impl/**",
 ]
 
 [tool.pytest.ini_options]

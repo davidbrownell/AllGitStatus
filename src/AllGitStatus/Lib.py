@@ -99,7 +99,7 @@ def GetRepositoryData(repository: Path) -> RepositoryData:
         if not content:
             local_changes = []
         else:
-            local_changes = list(re.split(delimiter, content))
+            local_changes = [commit.strip() for commit in re.split(delimiter, content)]
 
             if not local_changes[-1]:
                 local_changes = local_changes[:-1]
@@ -108,14 +108,14 @@ def GetRepositoryData(repository: Path) -> RepositoryData:
         ExecuteGitCommand("git fetch", repository)
 
         content = ExecuteGitCommand(
-            f'git log {branch}..origin/{branch} --format="commit %H%nAuthor: %an <%ae>%nDate: %ad%n%n    %s%n%b%n{delimiter}"',
+            f'git log {branch}..origin/{branch} --first-parent --format="commit %H%nAuthor: %an <%ae>%nDate: %ad%n%n    %s%n%b%n{delimiter}"',
             repository,
         )
 
         if not content:
             remote_changes = []
         else:
-            remote_changes = list(re.split(delimiter, content))
+            remote_changes = [commit.strip() for commit in re.split(delimiter, content)]
 
             if not remote_changes[-1]:
                 remote_changes = remote_changes[:-1]
