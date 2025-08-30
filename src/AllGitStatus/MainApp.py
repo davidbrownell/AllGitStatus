@@ -33,10 +33,10 @@ class MainApp(App):
     CSS_PATH = Path(__file__).with_suffix(".tcss").name
 
     BINDINGS = [  # noqa: RUF012
-        ("R", "RefreshAll", "Refresh All Repositories"),
-        ("r", "RefreshSelected", "Refresh Selected Repository"),
-        ("p", "PullSelected", "Pull Selected Repository"),
-        ("P", "PushSelected", "Push Selected Repository"),
+        ("R", "RefreshAll", "Refresh All"),
+        ("r", "RefreshSelected", "Refresh"),
+        ("p", "PullSelected", "Pull"),
+        ("P", "PushSelected", "Push"),
         ("X", "ClearGitErrors", "Clear git Errors"),
     ]
 

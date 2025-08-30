@@ -90,7 +90,7 @@ class TestGetRepositoryData:
         repo_data = GetRepositoryData(repo)
 
         assert repo_data.path == repo
-        assert repo_data.branch == "master"
+        assert repo_data.branch in ["main", "master"], repo_data.branch
         assert repo_data.working_changes == []
         assert repo_data.local_changes == []
         assert repo_data.remote_changes == []
@@ -118,7 +118,7 @@ class TestGetRepositoryData:
         repo_data = GetRepositoryData(clone)
 
         assert repo_data.path == clone
-        assert repo_data.branch == "master"
+        assert repo_data.branch in ["main", "master"], repo_data.branch
         assert repo_data.working_changes == []
         assert repo_data.local_changes == []
         assert repo_data.remote_changes == []
@@ -158,7 +158,7 @@ class TestGetRepositoryData:
         repo_data = GetRepositoryData(clone)
 
         assert repo_data.path == clone
-        assert repo_data.branch == "master"
+        assert repo_data.branch in ["main", "master"], repo_data.branch
         assert repo_data.working_changes == ["A  file6.txt", "?? file5.txt"]
 
         assert len(repo_data.local_changes) == 2
