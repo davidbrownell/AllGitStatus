@@ -13,7 +13,12 @@ authors = [
     { name = "David Brownell", email = "github@davidbrownell.com" }
 ]
 requires-python = ">= 3.13"
-dependencies = []
+dependencies = [
+    "attrs>=25.3.0",
+    "dbrownell-common>=0.16.0",
+    "textual>=5.3.0",
+    "typer>=0.16.1",
+]
 classifiers = [
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
@@ -24,6 +29,9 @@ classifiers = [
 
 [project.license]
 text = "MIT"
+
+[project.scripts]
+AllGitStatus = "AllGitStatus:__main__.app"
 
 [project.urls]
 Homepage = "https://github.com/davidbrownell/AllGitStatus"
@@ -40,13 +48,22 @@ dev = [
     "dbrownell-commitemojis>=0.1.4",
     "pre-commit>=4.3.0",
     "py-minisign>=0.12.0",
+    "pyfakefs>=5.9.2",
     "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
     "ruff>=0.12.10",
+    "textual-dev>=1.7.0",
+]
+
+[tool.coverage.run]
+omit = [
+    "src/AllGitStatus/**/Impl/**",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--verbose -vv --capture=no --cov=AllGitStatus --cov-report html --cov-report term --cov-report xml:coverage.xml --cov-fail-under=95.0"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 110
