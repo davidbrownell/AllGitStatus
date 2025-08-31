@@ -364,6 +364,9 @@ class MainApp(App):
 
     # ----------------------------------------------------------------------
     def _GetRepoName(self, repository_path: Path) -> str:
+        if repository_path == self.working_dir:
+            return repository_path.name
+
         return str(repository_path.relative_to(self.working_dir))
 
     # ----------------------------------------------------------------------

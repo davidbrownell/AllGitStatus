@@ -512,22 +512,57 @@ async def test_PushError():
 
 
 # ----------------------------------------------------------------------
+async def test_LaunchedFromRepositoryDir() -> None:
+    """Ensure that the repository name is displayed when the app is run in a working directory that is a git repository."""
+
+    path = Path(__file__).parent
+
+    # ----------------------------------------------------------------------
+    def GenerateRepos(root_path: Path) -> list[Path]:
+        return [path]
+
+    # ----------------------------------------------------------------------
+    def GetRepositoryData(the_path: Path) -> RepositoryData:
+        assert the_path == path
+        return RepositoryData(the_path, "the mighty branch", [], [], [])
+
+    # ----------------------------------------------------------------------
+
+    async with _GeneratePilot(
+        None,
+        generate_repos_func=GenerateRepos,
+        get_repository_data_func=GetRepositoryData,
+        path_arg=path,
+    ) as pilot:
+        rows = _GetDataTableRowData(pilot)
+
+        assert rows == [
+            [path.name, "the mighty branch", ""],
+        ]
+
+
+# ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
 @asynccontextmanager
 async def _GeneratePilot(
     keys: list[str] | None,
     *,
-    generate_repos_func: Callable[[], list[Path]] | None = None,
+    generate_repos_func: Callable[[Path], list[Path]] | None = None,
     get_repository_data_func: Callable[[Path], RepositoryData] | None = None,
     execute_git_command_func: Callable[[str, Path], None] | None = None,
+    path_arg: Path | None = None,
 ) -> AsyncGenerator[Pilot]:
     with (
         patch("AllGitStatus.Impl.GetRepositoriesModal.GenerateRepos") as generate_repos_mock,
         patch("AllGitStatus.MainApp.GetRepositoryData") as get_repository_data_mock,
         patch("AllGitStatus.MainApp.ExecuteGitCommand") as execute_git_command_mock,
     ):
-        repos = [Path("repo1"), Path("repo2"), Path("repo3"), Path("repo4")]
+        repos = (
+            generate_repos_func(path_arg or Path())
+            if generate_repos_func
+            else [Path("repo1"), Path("repo2"), Path("repo3"), Path("repo4")]
+        )
 
         # ----------------------------------------------------------------------
         def GetRepositoryData(repository: Path) -> RepositoryData:
@@ -555,7 +590,7 @@ async def _GeneratePilot(
         get_repository_data_mock.side_effect = get_repository_data_func or GetRepositoryData
         execute_git_command_mock.side_effect = execute_git_command_func or (lambda *args, **kwargs: None)
 
-        async with MainApp(Path()).run_test() as pilot:
+        async with MainApp(path_arg or Path()).run_test() as pilot:
             # Give the repos a chance to populate
             while get_repository_data_mock.call_count < len(repos):
                 await asyncio.sleep(0.1)
