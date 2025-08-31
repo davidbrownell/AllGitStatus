@@ -39,6 +39,7 @@ class MainApp(App):
         ("p", "PullSelected", "Pull"),
         ("P", "PushSelected", "Push"),
         ("X", "ClearGitErrors", "Clear git Errors"),
+        ("q", "quit", "Quit"),
     ]
 
     # ----------------------------------------------------------------------

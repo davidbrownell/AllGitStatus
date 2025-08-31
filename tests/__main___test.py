@@ -26,3 +26,18 @@ def test_NoCommandLine() -> None:
 
         assert tuple(mock_main_app.mock_calls[0]) == ("", (Path.cwd(),), {})
         assert tuple(mock_main_app.mock_calls[1]) == ("().run", (), {})
+
+
+# ----------------------------------------------------------------------
+def test_CommandLine() -> None:
+    path_arg = Path(__file__).parent
+
+    with patch("AllGitStatus.__main__.MainApp") as mock_main_app:
+        result = CliRunner().invoke(app, [str(path_arg)])
+
+        assert result.exit_code == 0
+
+        assert len(mock_main_app.mock_calls) == 2
+
+        assert tuple(mock_main_app.mock_calls[0]) == ("", (path_arg,), {})
+        assert tuple(mock_main_app.mock_calls[1]) == ("().run", (), {})
