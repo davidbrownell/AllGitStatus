@@ -75,14 +75,21 @@ def GenerateRepos(root: Path) -> Iterator[Path]:
 def GetRepositoryData(repository: Path) -> RepositoryData:
     """Get information about a specific repository."""
 
+    is_detached_head = False
+
     # Get the branch
     branch = ExecuteGitCommand("git branch --show-current", repository)
+    if not branch:
+        content = ExecuteGitCommand("git status", repository)
+        if content.startswith("HEAD detached"):
+            is_detached_head = True
+            branch = content.splitlines()[0]
 
     # Get working changes
     working_changes = ExecuteGitCommand("git status --short", repository).splitlines()
 
     # Does this repo have a remote?
-    has_remote = bool(ExecuteGitCommand("git remote -v", repository))
+    has_remote = not is_detached_head and bool(ExecuteGitCommand("git remote -v", repository))
 
     if not has_remote:
         local_changes: list[str] = []
