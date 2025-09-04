@@ -4,7 +4,7 @@
 **Package:**
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/AllGitStatus?color=dark-green)](https://pypi.org/project/AllGitStatus/)
 [![PyPI - Version](https://img.shields.io/pypi/v/AllGitStatus?color=dark-green)](https://pypi.org/project/AllGitStatus/)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/AllGitStatus)](https://pypistats.org/packages/AllGitStatus)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/AllGitStatus)](https://pypistats.org/packages/allgitstatus)
 
 **Development:**
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
