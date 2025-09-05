@@ -2,16 +2,16 @@ GetRepositoriesModal {
     align: center middle;
 }
 
-#GitGroup {
+#git_group {
     height: 2fr;
 
-    #DataTable {
+    #data_table {
         border: solid $primary-muted;
         height: 100%;
         width: 2fr;
     }
 
-    #GitLog {
+    #git_log {
         background: $primary-background-darken-3;
         border: solid $primary-muted;
         height: 100%;
@@ -19,24 +19,40 @@ GetRepositoriesModal {
     }
 }
 
-#ChangesGroup {
+#changes_group {
     height: 1fr;
 
-    #WorkingLog {
+    #working_log {
         border: solid $primary-muted;
         height: 100%;
         width: 1fr;
     }
 
-    #LocalLog {
+    #local_log {
         border: solid $primary-muted;
         height: 100%;
         width: 1fr;
     }
 
-    #RemoteLog {
+    #remote_log {
         border: solid $primary-muted;
         height: 100%;
         width: 1fr;
+    }
+}
+
+#footer {
+    dock: bottom;
+    height: 1;
+
+    Footer {
+        width: 75%;
+    }
+
+    Label {
+        dock: right;
+        background: $footer-background;
+        text-align: center;
+        width: 25%;
     }
 }
