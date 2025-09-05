@@ -203,8 +203,10 @@ class MainApp(App):
             if repositories is None:
                 return  # pragma: no cover
 
+            assert not self._repository_data_items
+            self._repository_data_items = [None] * len(repositories)
+
             for repository_index, repository in enumerate(repositories):
-                self._repository_data_items.append(None)
                 self._data_table.add_row()
 
                 self._ResetRepository(repository, repository_index)

@@ -1,4 +1,5 @@
 # noqa: D100
+import os
 import re
 import uuid
 
@@ -66,9 +67,14 @@ def ExecuteGitCommand(
 def GenerateRepos(root: Path) -> Iterator[Path]:
     """Generate all git repositories found under the specified root directory."""
 
-    for path in root.rglob(".git"):
-        if path.is_dir():
-            yield path.parent
+    for this_root_str, directories, _ in os.walk(root):
+        this_root = Path(this_root_str)
+
+        if ".git" in directories:
+            yield this_root
+
+            # Do not spend any more time searching this directory and its descendants
+            directories[:] = []
 
 
 # ----------------------------------------------------------------------
