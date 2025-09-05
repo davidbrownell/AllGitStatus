@@ -12,8 +12,9 @@ from rich.spinner import Spinner
 from textual.app import App, ComposeResult, ScreenStackError
 from textual.containers import Horizontal, Vertical
 from textual.coordinate import Coordinate
-from textual.widgets import DataTable, Footer, Header, RichLog
+from textual.widgets import DataTable, Footer, Header, Label, RichLog
 
+from AllGitStatus import __version__
 from AllGitStatus.Impl.GetRepositoriesModal import GetRepositoriesModal
 from AllGitStatus.Lib import GetRepositoryData, GitError, ExecuteGitCommand, RepositoryData
 
@@ -58,20 +59,20 @@ class MainApp(App):
         self._data_table: DataTable = DataTable(
             cursor_type="row",
             zebra_stripes=True,
-            id="DataTable",
+            id="data_table",
         )
         self._data_table.border_title = "[1] Repositories"
 
-        self._git_log = RichLog(id="GitLog")
+        self._git_log = RichLog(id="git_log")
         self._git_log.border_title = "[2] git Errors"
 
-        self._working_log = RichLog(id="WorkingLog")
+        self._working_log = RichLog(id="working_log")
         self._working_log.border_title = "[3] Working Changes"
 
-        self._local_log = RichLog(id="LocalLog")
+        self._local_log = RichLog(id="local_log")
         self._local_log.border_title = "[4] Local Changes"
 
-        self._remote_log = RichLog(id="RemoteLog")
+        self._remote_log = RichLog(id="remote_log")
         self._remote_log.border_title = "[5] Remote Changes"
 
         self._repository_data_items: list[RepositoryData | Path | None] = []
@@ -80,10 +81,10 @@ class MainApp(App):
     def compose(self) -> ComposeResult:  # noqa: D102
         yield Header()
         yield Vertical(
-            Horizontal(self._data_table, self._git_log, id="GitGroup"),
-            Horizontal(self._working_log, self._local_log, self._remote_log, id="ChangesGroup"),
+            Horizontal(self._data_table, self._git_log, id="git_group"),
+            Horizontal(self._working_log, self._local_log, self._remote_log, id="changes_group"),
         )
-        yield Footer()
+        yield Horizontal(Footer(), Label(__version__), id="footer")
 
     # ----------------------------------------------------------------------
     def on_mount(self) -> None:  # noqa: D102
