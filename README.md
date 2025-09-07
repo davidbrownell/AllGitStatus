@@ -22,10 +22,39 @@
 - [License](#license)
 
 ## Overview
-TODO: Complete this section
+`AllGitStatus` is a [Text-based user interface](https://en.wikipedia.org/wiki/Text-based_user_interface) (TUI) that checks the git status for all repositories found under the specified directory. It can be used to quickly understand the status of multiple repositories stored under the same common ancestor. Additionally, it can be used to pull or push changes to/from a remote when changes are detected.
+
+<img width="1611" height="974" alt="screenshot" src="https://github.com/user-attachments/assets/881c7686-51a5-4e3f-93d6-e1699fa6a7ea" />
+
+[Screenshot of `AllGitStatus`]
+
+
+https://github.com/user-attachments/assets/332f21a7-b56c-40e8-a33b-d56c079aab64
+
+[Demo of `AllGitStatus`]
+
 
 ### How to use `AllGitStatus`
-TODO: Complete this section
+
+`AllGitStatus` can be run directly via [uv](https://github.com/astral-sh/uv) or installed as a python package.
+
+#### Running with `uv`
+
+Ensure that `uv` is installed and available on the path. Instructions on installing `uv` are available at https://docs.astral.sh/uv/#installation.
+
+| Command Line | Scenario |
+| --- | --- |
+| `uvx AllGitStatus` | To run using the current directory as the root of all git repositories. |
+| `uvx AllGitStatus <path to directory>` | To run using the specified directory as the root of all git repositories. |
+
+#### Running as a python package
+
+Install `AllGitStatus` as a python package using the [instructions below](#installation).
+
+| Command Line | Scenario |
+| --- | --- |
+| `AllGitStatus` | To run using the current directory as the root of all git repositories. |
+| `AllGitStatus <path to directory>` | To run using the specified directory as the root of all git repositories. |
 
 <!-- Content below this delimiter will be copied to the generated README.md file. DO NOT REMOVE THIS COMMENT, as it will cause regeneration to fail. -->
 
