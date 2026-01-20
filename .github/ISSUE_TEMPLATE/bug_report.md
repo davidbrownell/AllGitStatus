@@ -15,7 +15,8 @@ Steps to reproduce the behavior:
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
-4. See error
+4. Invoke via '....'
+5. See error
 
 ## Expected behavior
 A clear and concise description of what you expected to happen.
@@ -25,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 
 ## Environment (please complete the following information):
  - OS: [e.g. iOS]
- - Python Version: [e.g. 3.13, 3.12, 3.11, etc.]
+ - Python Version: [e.g. 3.14, 3.13, 3.12, 3.11, etc.]
  - AllGitStatus Version [e.g. 1.2.3]
 
 ## Additional context
