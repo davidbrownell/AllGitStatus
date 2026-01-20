@@ -6,7 +6,7 @@
 # available at https://github.com/gt-sse-center/copier-UvScaffolding.
 #
 
-_commit: v0.3.4
+_commit: v0.5.0
 _src_path: .
 author_email: github@DavidBrownell.com
 author_name: David Brownell
@@ -15,6 +15,7 @@ coverage_badge_gist_username: davidbrownell
 github_host: https://github.com
 github_repo_name: AllGitStatus
 github_username: davidbrownell
+install_ty: false
 license: MIT
 project_name: AllGitStatus
 python_package_name: AllGitStatus
