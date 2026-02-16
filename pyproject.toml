@@ -54,6 +54,7 @@ dev = [
     "pytest-cov>=6.2.1",
     "ruff>=0.12.10",
     "textual-dev>=1.7.0",
+    "ty>=0.0.17",
 ]
 
 [tool.coverage.run]
@@ -103,6 +104,12 @@ max-complexity = 15
 max-args = 10
 max-branches = 20
 max-returns = 20
+
+[[tool.ty.overrides]]
+include = ["tests/**"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
 
 [tool.uv.build-backend]
 module-name = "AllGitStatus"

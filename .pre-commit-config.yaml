@@ -24,3 +24,10 @@ repos:
     language: system
     pass_filenames: false
     always_run: true
+
+  - id: uv run ty check
+    name: uv run ty check
+    entry: uv run ty check
+    language: system
+    pass_filenames: false
+    always_run: true
