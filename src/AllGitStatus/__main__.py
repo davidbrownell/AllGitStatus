@@ -46,6 +46,14 @@ def EntryPoint(
             help="Working directory that contains one or more git repositories.",
         ),
     ] = Path.cwd(),  # noqa: B008
+    pat_token_or_filename: Annotated[
+        str | None,
+        typer.Option(
+            "--pat",
+            envvar="ALLGITSTATUS_PAT",
+            help="GitHub Personal Access Token (PAT) or filename that contains the PAT.",
+        ),
+    ] = None,
     version: Annotated[  # noqa: ARG001, FBT002
         bool,
         typer.Option(
@@ -54,10 +62,27 @@ def EntryPoint(
             is_eager=True,
         ),
     ] = False,
+    debug: Annotated[  # noqa: FBT002
+        bool,
+        typer.Option("--debug", help="Write debug information to the terminal."),
+    ] = False,
 ) -> None:
     """Display git status information for one or more git repositories under the specified directory."""
 
-    MainApp(working_dir).run()
+    max_filename_length = 1000
+
+    if (
+        pat_token_or_filename is not None
+        and len(pat_token_or_filename) < max_filename_length
+        and (pat_token_filename := Path(pat_token_or_filename)).is_file()
+    ):
+        pat_token_or_filename = pat_token_filename.read_text(encoding="utf-8").strip()
+
+    MainApp(
+        working_dir,
+        pat_token_or_filename,
+        debug=debug,
+    ).run()
 
 
 # ----------------------------------------------------------------------

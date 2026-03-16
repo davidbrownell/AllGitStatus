@@ -2,44 +2,77 @@
 import contextlib
 import textwrap
 
-from enum import auto, Enum
+from dataclasses import dataclass
 from pathlib import Path
 
-from dbrownell_Common.ContextlibEx import ExitStack
-from rich.console import Group
-from rich.panel import Panel
-from rich.spinner import Spinner
+from rich.text import Text
+from rich.traceback import Traceback
 from textual.app import App, ComposeResult, ScreenStackError
 from textual.containers import Horizontal, Vertical
 from textual.coordinate import Coordinate
+from textual.screen import ModalScreen
 from textual.widgets import DataTable, Footer, Header, Label, RichLog
 
 from AllGitStatus import __version__
-from AllGitStatus.Impl.GetRepositoriesModal import GetRepositoriesModal
-from AllGitStatus.Lib import GetRepositoryData, GitError, ExecuteGitCommand, RepositoryData
+from AllGitStatus.Auth import CreateAuthenticatedSession
+from AllGitStatus.Repository import EnumerateRepositories, Repository
+from AllGitStatus.Sources.GitHubSource import GitHubSource
+from AllGitStatus.Sources.LocalGitSource import LocalGitSource
+from AllGitStatus.Sources.Source import ErrorInfo, ResultInfo
 
 
 # ----------------------------------------------------------------------
-class Columns(Enum):
-    """Repository display columns."""
+# ----------------------------------------------------------------------
+@dataclass(frozen=True)
+class Column:
+    """Column displayed within a data table."""
 
-    Name = 0
-    Branch = auto()
-    Status = auto()
+    value: int
+    name: str
+    justify: str
+
+
+# ----------------------------------------------------------------------
+NameColumn = Column(0, "Name", "left")
+BranchColumn = Column(1, "Branch", "center")
+LocalColumn = Column(2, "Local", "center")
+StashesColumn = Column(3, "Stashes", "center")
+RemoteColumn = Column(4, "Remote", "center")
+StarsColumn = Column(5, "Stars", "center")
+ForksColumn = Column(6, "Forks", "center")
+WatchersColumn = Column(7, "Watchers", "center")
+IssuesColumn = Column(8, "Issues", "center")
+
+COLUMN_MAP: dict[
+    tuple[
+        str,  # source class name
+        str | None,  # source key value
+    ],
+    Column,
+] = {
+    ("", ""): NameColumn,
+    (LocalGitSource.__name__, "current_branch"): BranchColumn,
+    (LocalGitSource.__name__, "local_status"): LocalColumn,
+    (LocalGitSource.__name__, "stashes"): StashesColumn,
+    (LocalGitSource.__name__, "remote_status"): RemoteColumn,
+    (GitHubSource.__name__, "stars"): StarsColumn,
+    (GitHubSource.__name__, "forks"): ForksColumn,
+    (GitHubSource.__name__, "watchers"): WatchersColumn,
+    (GitHubSource.__name__, "issues"): IssuesColumn,
+}
 
 
 # ----------------------------------------------------------------------
 class MainApp(App):
     """Main application."""
 
-    CSS_PATH = Path(__file__).with_suffix(".tcss").name
+    CSS_PATH = Path(__file__).with_suffix(".tcss")
 
     BINDINGS = [  # noqa: RUF012
         ("R", "RefreshAll", "Refresh All"),
         ("r", "RefreshSelected", "Refresh"),
         ("p", "PullSelected", "Pull"),
         ("P", "PushSelected", "Push"),
-        ("X", "ClearGitErrors", "Clear git Errors"),
         ("q", "quit", "Quit"),
     ]
 
@@ -47,54 +80,99 @@ class MainApp(App):
     def __init__(
         self,
         working_dir: Path,
+        session_token: str | None,
         *args,
+        debug: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        self.working_dir = working_dir
+        self._working_dir = working_dir
+        self._session_token = session_token
+        self._debug = debug
 
-        self.title = "AllGitStatus"
+        self.title = "AllGitStatus{}".format(" [DEBUG]" if debug else "")
 
         self._data_table: DataTable = DataTable(
-            cursor_type="row",
+            cursor_type="cell",
             zebra_stripes=True,
             id="data_table",
         )
+
         self._data_table.border_title = "[1] Repositories"
 
-        self._git_log = RichLog(id="git_log")
-        self._git_log.border_title = "[2] git Errors"
+        self._additional_info = RichLog(id="additional_info")
+        self._additional_info.border_title = "[2] Additional Info"
 
-        self._working_log = RichLog(id="working_log")
-        self._working_log.border_title = "[3] Working Changes"
+        self._repositories: list[Repository] | None = None
 
-        self._local_log = RichLog(id="local_log")
-        self._local_log.border_title = "[4] Local Changes"
+        self._additional_info_data: dict[
+            int,  # row_index
+            dict[
+                int,  # column_index
+                object,
+            ],
+        ] = {}
 
-        self._remote_log = RichLog(id="remote_log")
-        self._remote_log.border_title = "[5] Remote Changes"
-
-        self._repository_data_items: list[RepositoryData | Path | None] = []
+        self._state_data: dict[
+            int,  # row_index
+            dict[
+                int,  # column_index
+                object,
+            ],
+        ] = {}
 
     # ----------------------------------------------------------------------
     def compose(self) -> ComposeResult:  # noqa: D102
         yield Header()
         yield Vertical(
-            Horizontal(self._data_table, self._git_log, id="git_group"),
-            Horizontal(self._working_log, self._local_log, self._remote_log, id="changes_group"),
+            self._data_table,
+            self._additional_info,
+            id="vertical_group",
         )
         yield Horizontal(Footer(), Label(__version__), id="footer")
 
     # ----------------------------------------------------------------------
-    def on_mount(self) -> None:  # noqa: D102
-        self._data_table.add_columns(*[c.name for c in Columns])
+    async def on_mount(self) -> None:  # noqa: D102
+        for column in COLUMN_MAP.values():
+            self._data_table.add_column(Text(column.name, justify=column.justify))  # ty: ignore[invalid-argument-type]
 
-        self._ResetAllRepositories()
+        await self._ResetAllRepositories()
 
     # ----------------------------------------------------------------------
-    def on_data_table_row_highlighted(self, message: DataTable.RowHighlighted) -> None:  # noqa: ARG002, D102
-        self._OnRepositorySelectionChanged()
+    async def on_data_table_cell_highlighted(self, message: DataTable.ColumnSelected) -> None:  # noqa: ARG002, D102
+        await self._OnSelectionChanged()
+
+    # ----------------------------------------------------------------------
+    async def action_RefreshAll(self) -> None:  # noqa: D102
+        await self._ResetAllRepositories()
+
+    # ----------------------------------------------------------------------
+    async def action_RefreshSelected(self) -> None:  # noqa: D102
+        assert self._repositories is not None
+
+        await self._ResetRepository(
+            self._repositories[self._data_table.cursor_coordinate.row],
+            self._data_table.cursor_coordinate.row,
+        )
+
+    # ----------------------------------------------------------------------
+    async def action_PullSelected(self) -> None:  # noqa: D102
+        assert self._repositories is not None
+
+        repository = self._repositories[self._data_table.cursor_coordinate.row]
+
+        await LocalGitSource.Pull(repository)
+        await self._ResetRepository(repository, self._data_table.cursor_coordinate.row)
+
+    # ----------------------------------------------------------------------
+    async def action_PushSelected(self) -> None:  # noqa: D102
+        assert self._repositories is not None
+
+        repository = self._repositories[self._data_table.cursor_coordinate.row]
+
+        await LocalGitSource.Push(repository)
+        await self._ResetRepository(repository, self._data_table.cursor_coordinate.row)
 
     # ----------------------------------------------------------------------
     def key_1(self) -> None:  # noqa: D102
@@ -102,321 +180,212 @@ class MainApp(App):
 
     # ----------------------------------------------------------------------
     def key_2(self) -> None:  # noqa: D102
-        self._git_log.focus()
-
-    # ----------------------------------------------------------------------
-    def key_3(self) -> None:  # noqa: D102
-        self._working_log.focus()
-
-    # ----------------------------------------------------------------------
-    def key_4(self) -> None:  # noqa: D102
-        self._local_log.focus()
-
-    # ----------------------------------------------------------------------
-    def key_5(self) -> None:  # noqa: D102
-        self._remote_log.focus()
+        self._additional_info.focus()
 
     # ----------------------------------------------------------------------
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:  # noqa: ARG002, D102
         if action == "RefreshAll":
-            if self._repository_data_items and not any(item is None for item in self._repository_data_items):
+            if self._repositories is not None:
                 return True
 
             return None
 
         if action == "RefreshSelected":
-            if (
-                self._repository_data_items
-                and self._repository_data_items[self._data_table.cursor_row] is not None
-            ):
+            if self._repositories is not None:
                 return True
 
             return None
 
         if action == "PullSelected":
-            if (
-                self._repository_data_items
-                and isinstance(self._repository_data_items[self._data_table.cursor_row], RepositoryData)
-                and self._repository_data_items[self._data_table.cursor_row].remote_changes  # type: ignore[union-attr]
-            ):
-                return True
+            if self._repositories is not None:
+                state_data = self._state_data.get(self._data_table.cursor_coordinate.row, {}).get(
+                    RemoteColumn.value, {}
+                )
+
+                if state_data and state_data["has_remote_changes"]:  # ty: ignore[not-subscriptable]
+                    return True
 
             return None
 
         if action == "PushSelected":
-            if (
-                self._repository_data_items
-                and isinstance(self._repository_data_items[self._data_table.cursor_row], RepositoryData)
-                and self._repository_data_items[self._data_table.cursor_row].local_changes  # type: ignore[union-attr]
-            ):
-                return True
+            if self._repositories is not None:
+                state_data = self._state_data.get(self._data_table.cursor_coordinate.row, {}).get(
+                    RemoteColumn.value, {}
+                )
+
+                if state_data and state_data["has_local_changes"]:  # ty: ignore[not-subscriptable]
+                    return True
 
             return None
 
         return True
 
     # ----------------------------------------------------------------------
-    def action_RefreshAll(self) -> None:  # noqa: D102
-        self._ResetAllRepositories()
-
+    # |
+    # |  Private Methods
+    # |
     # ----------------------------------------------------------------------
-    def action_RefreshSelected(self) -> None:  # noqa: D102
-        repo_data = self._repository_data_items[self._data_table.cursor_row]
-        assert repo_data is not None
-
-        if isinstance(repo_data, Path):
-            repo_path = repo_data
-        elif isinstance(repo_data, RepositoryData):
-            repo_path = repo_data.path
-        else:
-            assert False, repo_data  # noqa: B011, PT015 # pragma: no cover
-
-        self._ResetRepository(repo_path, self._data_table.cursor_row)
-
-    # ----------------------------------------------------------------------
-    def action_PullSelected(self) -> None:  # noqa: D102
-        self._ExecuteGitCommand("git pull")
-
-    # ----------------------------------------------------------------------
-    def action_PushSelected(self) -> None:  # noqa: D102
-        self._ExecuteGitCommand("git push")
-
-    # ----------------------------------------------------------------------
-    def action_ClearGitErrors(self) -> None:  # noqa: D102
-        self._git_log.clear()
-
-    # ----------------------------------------------------------------------
-    # ----------------------------------------------------------------------
-    # ----------------------------------------------------------------------
-    def _ResetAllRepositories(self) -> None:
-        # Clear all content
-        self._repository_data_items = []
-
+    async def _ResetAllRepositories(self) -> None:
+        self._repositories = None
+        self._additional_info_data.clear()
+        self._state_data.clear()
         self._data_table.clear()
-        self._git_log.clear()
-        self._OnRepositorySelectionChanged(repopulate_changes=False)
+        await self._OnSelectionChanged(repopulate_changes=False)
 
         # Get the repositories
 
         # ----------------------------------------------------------------------
-        def OnRepositoriesComplete(repositories: list[Path] | None) -> None:
+        async def OnRepositoriesComplete(repositories: list[Repository] | None) -> None:
             if repositories is None:
-                return  # pragma: no cover
+                return
 
-            assert not self._repository_data_items
-            self._repository_data_items = [None] * len(repositories)
+            assert self._repositories is None
+            self._repositories = repositories
 
             for repository_index, repository in enumerate(repositories):
                 self._data_table.add_row()
 
-                self._ResetRepository(repository, repository_index)
+                await self._ResetRepository(repository, repository_index)
 
         # ----------------------------------------------------------------------
 
-        self.push_screen(GetRepositoriesModal(self.working_dir), OnRepositoriesComplete)
+        self.push_screen(_GetRepositoriesModal(self._working_dir), OnRepositoriesComplete)
 
     # ----------------------------------------------------------------------
-    def _ResetRepository(self, repository_path: Path, repository_index: int) -> None:
-        if self._data_table.cursor_row == repository_index:
-            self._OnRepositorySelectionChanged(repopulate_changes=False)
+    async def _ResetRepository(self, repository: Repository, repository_index: int) -> None:
+        self._additional_info_data.pop(repository_index, None)
+        self._state_data.pop(repository_index, None)
 
-        assert len(self._repository_data_items) > repository_index
-        self._repository_data_items[repository_index] = None
-
-        # Create the UX displayed while loading the content
-        repo_name = self._GetRepoName(repository_path)
-
-        spinner = Spinner("dots", text=repo_name)
-
-        for column in Columns:
+        for column in COLUMN_MAP.values():
             self._data_table.update_cell_at(
                 Coordinate(repository_index, column.value),
-                spinner if column.name == "Name" else "",
-                update_width=True,
+                "",
             )
 
-        # ----------------------------------------------------------------------
-        async def UpdateSpinner() -> None:
-            self._data_table.update_cell_at(
-                Coordinate(repository_index, Columns.Name.value),
-                spinner,
-                update_width=True,
-            )
+        if repository_index == self._data_table.cursor_coordinate.row:
+            self._RefreshBindings()
 
-        # ----------------------------------------------------------------------
+        # Create the repo name
+        if repository.path == self._working_dir:
+            repo_name = repository.path.name
+        else:
+            repo_name = str(repository.path.relative_to(self._working_dir))
 
-        spinner_timer = self.set_interval(0.1, UpdateSpinner)
+        self._data_table.update_cell_at(
+            Coordinate(repository_index, NameColumn.value),
+            Text(f"📂 {repo_name}", justify=NameColumn.justify),  # ty: ignore[invalid-argument-type]
+            update_width=True,
+        )
+
+        self._additional_info_data.setdefault(repository_index, {})[NameColumn.value] = textwrap.dedent(
+            f"""\
+            Local:  {repository.path}
+            Origin: {repository.remote_url or ""}
+            """,
+        )
 
         # Load the content
+
         # ----------------------------------------------------------------------
-        async def Execute() -> None:
-            data_items_content: RepositoryData | Path | None = None
+        async def LoadCells() -> None:
+            async with CreateAuthenticatedSession(self._session_token) as session:
+                for source in [
+                    LocalGitSource(),
+                    GitHubSource(session),
+                ]:
+                    if not source.Applies(repository):
+                        continue
 
-            # ----------------------------------------------------------------------
-            def Commit() -> None:
-                assert self._repository_data_items[repository_index] is None
-                self._repository_data_items[repository_index] = data_items_content
-
-                if self._data_table.cursor_row == repository_index or all(
-                    data_item is not None for data_item in self._repository_data_items
-                ):
-                    self.call_from_thread(self._OnRepositorySelectionChanged)
-
-            # ----------------------------------------------------------------------
-
-            with ExitStack(Commit):
-                try:
-                    with ExitStack(spinner_timer.stop):
-                        repo_data = GetRepositoryData(repository_path)
-                        data_items_content = repo_data
-
-                except GitError as ex:
-                    data_items_content = repository_path
-                    self._ProcessGitError(repository_index, ex)
-                    return
-
-                # Name
-                self._data_table.update_cell_at(
-                    Coordinate(repository_index, Columns.Name.value),
-                    repo_name,
-                    update_width=True,
-                )
-
-                # Branch
-                self._data_table.update_cell_at(
-                    Coordinate(repository_index, Columns.Branch.value),
-                    repo_data.branch,
-                    update_width=True,
-                )
-
-                # Status
-                status_parts: list[str] = []
-
-                if repo_data.working_changes:
-                    status_parts.append(f"Δ{len(repo_data.working_changes)}")
-                if repo_data.local_changes:
-                    status_parts.append(f"↑{len(repo_data.local_changes)}")
-                if repo_data.remote_changes:
-                    status_parts.append(f"↓{len(repo_data.remote_changes)}")
-
-                if status_parts:
-                    self._data_table.update_cell_at(
-                        Coordinate(repository_index, Columns.Status.value),
-                        " ".join(status_parts),
-                        update_width=True,
-                    )
+                    async for info in source.Query(repository):
+                        self._PopulateCell(repository_index, info)
 
         # ----------------------------------------------------------------------
 
-        self.run_worker(Execute(), thread=True)
+        self.run_worker(LoadCells())
 
     # ----------------------------------------------------------------------
-    def _OnRepositorySelectionChanged(self, *, repopulate_changes: bool = True) -> None:
-        self._working_log.clear()
-        self._local_log.clear()
-        self._remote_log.clear()
+    def _PopulateCell(self, repository_index: int, info: ResultInfo | ErrorInfo) -> None:
+        column = COLUMN_MAP[info.key]
 
-        # ScreenStackErrors are occasionally raised when testing
-        with contextlib.suppress(ScreenStackError):
-            self.refresh_bindings()
+        if isinstance(info, ErrorInfo):
+            display_value = "❌"
+            additional_info = Traceback.from_exception(
+                type(info.error),
+                info.error,
+                info.error.__traceback__ if self._debug else None,
+            )
+
+        elif isinstance(info, ResultInfo):
+            display_value = info.display_value
+            additional_info = info.additional_info
+
+            if info.state_data is not None:
+                self._state_data.setdefault(repository_index, {})[column.value] = info.state_data
+
+                if repository_index == self._data_table.cursor_coordinate.row:
+                    self._RefreshBindings()
+
+        else:
+            assert False, info  # noqa: B011, PT015  # pragma: no cover
+
+        self._data_table.update_cell_at(
+            Coordinate(repository_index, column.value),
+            Text(display_value, justify=column.justify),  # ty: ignore[invalid-argument-type]
+            update_width=True,
+        )
+
+        self._additional_info_data.setdefault(repository_index, {})[column.value] = additional_info
+
+    # ----------------------------------------------------------------------
+    async def _OnSelectionChanged(self, *, repopulate_changes: bool = True) -> None:
+        self._additional_info.clear()
+        self._RefreshBindings()
 
         if not repopulate_changes:
             return
 
-        data_item = self._repository_data_items[self._data_table.cursor_row]
-        if not isinstance(data_item, RepositoryData):
-            return
+        row_index = self._data_table.cursor_coordinate.row
+        col_index = self._data_table.cursor_coordinate.column
 
-        if data_item.working_changes:
-            self._working_log.write("\n".join(data_item.working_changes))
+        additional_info = self._additional_info_data.get(row_index, {}).get(col_index)
 
-        if data_item.local_changes:
-            self._local_log.write(Group(*[Panel(change) for change in data_item.local_changes]))
-
-        if data_item.remote_changes:
-            self._remote_log.write(Group(*[Panel(change) for change in data_item.remote_changes]))
+        if additional_info:
+            self._additional_info.write(additional_info)
 
     # ----------------------------------------------------------------------
-    def _ProcessGitError(self, repository_index: int, ex: GitError) -> None:
-        repo_name = self._GetRepoName(ex.repository_path)
+    def _RefreshBindings(self) -> None:
+        # ScreenStackErrors are occasionally raised when testing
+        with contextlib.suppress(ScreenStackError):
+            self.refresh_bindings()
 
-        self._data_table.update_cell_at(
-            Coordinate(repository_index, Columns.Name.value),
-            f"!! {repo_name} !!",
-            update_width=True,
-        )
 
-        # Note that python f-strings don't play nice with textwrap.dedent
-        self._git_log.write(
-            Panel(
-                textwrap.dedent(
-                    """\
-                    [red]{repo_name} ({returncode})[/]
-                    {command}
-
-                    {output}
-                    """,
-                ).format(
-                    repo_name=repo_name,
-                    returncode=ex.returncode,
-                    command=ex.command,
-                    output=ex.output,
-                ),
-            ),
-        )
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+class _GetRepositoriesModal(ModalScreen[list[Repository]]):
+    CSS = """
+        #GetRepositoriesModal {
+            background: $panel;
+            padding: 1;
+        }
+    """
 
     # ----------------------------------------------------------------------
-    def _GetRepoName(self, repository_path: Path) -> str:
-        if repository_path == self.working_dir:
-            return repository_path.name
-
-        return str(repository_path.relative_to(self.working_dir))
+    def __init__(self, working_dir: Path, *args, **kwargs) -> None:
+        self._working_dir = working_dir
+        super().__init__(*args, **kwargs)
 
     # ----------------------------------------------------------------------
-    def _ExecuteGitCommand(self, command: str) -> None:
-        assert self._repository_data_items
+    def compose(self) -> ComposeResult:
+        yield Label(f"Searching for repositories in '{self._working_dir}'...", id="GetRepositoriesModal")
 
-        data_item = self._repository_data_items[self._data_table.cursor_row]
-        assert isinstance(data_item, RepositoryData), data_item
-
-        repo_name = self._GetRepoName(data_item.path)
-
-        spinner = Spinner("point", text=repo_name)
-
-        self._data_table.update_cell_at(
-            Coordinate(self._data_table.cursor_row, Columns.Name.value),
-            spinner,
-            update_width=True,
-        )
-
-        # ----------------------------------------------------------------------
-        async def UpdateSpinner() -> None:
-            self._data_table.update_cell_at(
-                Coordinate(self._data_table.cursor_row, Columns.Name.value),
-                spinner,
-                update_width=True,
-            )
-
-        # ----------------------------------------------------------------------
-
-        spinner_timer = self.set_interval(0.1, UpdateSpinner)
-
+    # ----------------------------------------------------------------------
+    async def on_mount(self) -> None:
         # ----------------------------------------------------------------------
         async def Execute() -> None:
-            try:
-                with ExitStack(spinner_timer.stop):
-                    ExecuteGitCommand(command, data_item.path)
-            except GitError as ex:
-                self._ProcessGitError(self._data_table.cursor_row, ex)
-
-            self._data_table.update_cell_at(
-                Coordinate(self._data_table.cursor_row, Columns.Name.value),
-                repo_name,
-                update_width=True,
-            )
-
-            self.call_from_thread(lambda: self._ResetRepository(data_item.path, self._data_table.cursor_row))
+            repos = [repository async for repository in EnumerateRepositories(self._working_dir)]
+            self.dismiss(repos)
 
         # ----------------------------------------------------------------------
 
-        self.run_worker(Execute(), thread=True)
+        self.run_worker(Execute())
