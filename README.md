@@ -27,12 +27,11 @@
 ## Overview
 `AllGitStatus` is a [Text-based user interface](https://en.wikipedia.org/wiki/Text-based_user_interface) (TUI) that checks the git status for all repositories found under the specified directory. It can be used to quickly understand the status of multiple repositories stored under the same common ancestor. Additionally, it can be used to pull or push changes to/from a remote when changes are detected.
 
-<img width="1611" height="974" alt="screenshot" src="https://github.com/user-attachments/assets/881c7686-51a5-4e3f-93d6-e1699fa6a7ea" />
+<img width="1608" height="970" alt="screenshot" src="https://github.com/user-attachments/assets/807d2857-e5a3-4680-968d-91f948d9d730" />
 
 [Screenshot of `AllGitStatus`]
 
-
-https://github.com/user-attachments/assets/332f21a7-b56c-40e8-a33b-d56c079aab64
+https://github.com/user-attachments/assets/14956748-39e8-489c-800b-feae67c5e579
 
 [Demo of `AllGitStatus`]
 
