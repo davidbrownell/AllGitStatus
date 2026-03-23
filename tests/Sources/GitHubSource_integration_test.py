@@ -105,15 +105,15 @@ class TestGitHubSourceQuery:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_query_returns_valid_results(self, allgitstatus_repo: Repository) -> None:
-        """Query returns four ResultInfo items with correct structure and content."""
+        """Query returns five ResultInfo items with correct structure and content."""
 
         async with CreateAuthenticatedSession() as session:
             source = GitHubSource(session)
 
             results = [info async for info in source.Query(allgitstatus_repo)]
 
-        # Verify we get exactly 4 ResultInfo items
-        assert len(results) == 4
+        # Verify we get exactly 5 ResultInfo items
+        assert len(results) == 5
         assert all(isinstance(r, ResultInfo) for r in results)
 
         # All results should reference the same repo
@@ -147,6 +147,12 @@ class TestGitHubSourceQuery:
         assert "👀" in watchers.display_value
         assert watchers.additional_info == "https://github.com/davidbrownell/AllGitStatus/watchers"
 
+        # Verify pull_requests info
+        pull_requests = results_by_key["pull_requests"]
+        assert pull_requests.key == ("GitHubSource", "pull_requests")
+        assert "🔀" in pull_requests.display_value
+        assert pull_requests.additional_info == "https://github.com/davidbrownell/AllGitStatus/pulls"
+
         # Verify all display values contain numeric counts
         for result in results:
             number_part = result.display_value.split()[0]
@@ -175,6 +181,8 @@ class TestGitHubSourceQuery:
 
             results = [info async for info in source.Query(repo)]
 
-        assert len(results) == 1
-        assert isinstance(results[0], ErrorInfo)
+        # Both the main API call (stars) and the PR search API call fail for nonexistent repos
+        assert len(results) == 2
+        assert all(isinstance(r, ErrorInfo) for r in results)
         assert results[0].key == ("GitHubSource", "stars")
+        assert results[1].key == ("GitHubSource", "pull_requests")
