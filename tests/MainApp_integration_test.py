@@ -22,6 +22,7 @@ from AllGitStatus.MainApp import (
     LocalColumn,
     MainApp,
     NameColumn,
+    PullRequestsColumn,
     RemoteColumn,
     StarsColumn,
     StashesColumn,
@@ -971,6 +972,14 @@ class TestColumnDefinitions:
         assert IssuesColumn.justify == "center"
 
     # ----------------------------------------------------------------------
+    def test_pullrequests_column_properties(self) -> None:
+        """PullRequestsColumn has correct properties."""
+
+        assert PullRequestsColumn.value == 9
+        assert PullRequestsColumn.name == "PRs"
+        assert PullRequestsColumn.justify == "center"
+
+    # ----------------------------------------------------------------------
     def test_column_map_contains_all_columns(self) -> None:
         """COLUMN_MAP contains mappings for all column types."""
 
@@ -986,6 +995,7 @@ class TestColumnDefinitions:
             ForksColumn,
             WatchersColumn,
             IssuesColumn,
+            PullRequestsColumn,
         }
 
         assert unique_columns == expected_columns

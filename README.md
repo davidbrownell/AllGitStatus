@@ -1,5 +1,5 @@
 **Project:**
-[![License](https://img.shields.io/github/license/davidbrownell/AllGitStatus?color=dark-green)](https://github.com/davidbrownell/AllGitStatus/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/davidbrownell/AllGitStatus?color=dark-green)](https://github.com/davidbrownell/AllGitStatus/blob/main/LICENSE)
 
 **Package:**
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/AllGitStatus?color=dark-green)](https://pypi.org/project/AllGitStatus/)
