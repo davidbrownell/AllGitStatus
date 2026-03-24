@@ -3,11 +3,13 @@
 These tests make real API calls to GitHub using the davidbrownell/AllGitStatus repository.
 """
 
+import os
+
 from pathlib import Path
 
+import aiohttp
 import pytest
 
-from AllGitStatus.Auth import CreateAuthenticatedSession
 from AllGitStatus.Repository import Repository
 from AllGitStatus.Sources.GitHubSource import GitHubSource
 from AllGitStatus.Sources.Source import ErrorInfo, ResultInfo
@@ -40,32 +42,48 @@ def non_github_repo() -> Repository:
 
 
 # ----------------------------------------------------------------------
+@pytest.fixture
+async def session():
+    """Create an aiohttp session for GitHub API requests."""
+
+    headers = GitHubSource.CreateGitHubHttpHeaders(os.getenv("GITHUB_TOKEN"))
+    session = aiohttp.ClientSession(headers=headers)
+
+    try:
+        yield session
+    finally:
+        await session.close()
+
+
+# ----------------------------------------------------------------------
 class TestGitHubSourceApplies:
     """Tests for GitHubSource.Applies method."""
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_applies_to_github_repo(self, allgitstatus_repo: Repository) -> None:
+    async def test_applies_to_github_repo(
+        self, session: aiohttp.ClientSession, allgitstatus_repo: Repository
+    ) -> None:
         """Source applies to repositories with GitHub owner and repo."""
 
-        async with CreateAuthenticatedSession() as session:
-            source = GitHubSource(session)
+        source = GitHubSource(session)
 
-            assert source.Applies(allgitstatus_repo) is True
+        assert source.Applies(allgitstatus_repo) is True
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_does_not_apply_to_non_github_repo(self, non_github_repo: Repository) -> None:
+    async def test_does_not_apply_to_non_github_repo(
+        self, session: aiohttp.ClientSession, non_github_repo: Repository
+    ) -> None:
         """Source does not apply to repositories without GitHub info."""
 
-        async with CreateAuthenticatedSession() as session:
-            source = GitHubSource(session)
+        source = GitHubSource(session)
 
-            assert source.Applies(non_github_repo) is False
+        assert source.Applies(non_github_repo) is False
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_does_not_apply_when_owner_missing(self) -> None:
+    async def test_does_not_apply_when_owner_missing(self, session: aiohttp.ClientSession) -> None:
         """Source does not apply when github_owner is None."""
 
         repo = Repository(
@@ -75,14 +93,13 @@ class TestGitHubSourceApplies:
             github_repo="repo",
         )
 
-        async with CreateAuthenticatedSession() as session:
-            source = GitHubSource(session)
+        source = GitHubSource(session)
 
-            assert source.Applies(repo) is False
+        assert source.Applies(repo) is False
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_does_not_apply_when_repo_missing(self) -> None:
+    async def test_does_not_apply_when_repo_missing(self, session: aiohttp.ClientSession) -> None:
         """Source does not apply when github_repo is None."""
 
         repo = Repository(
@@ -92,10 +109,9 @@ class TestGitHubSourceApplies:
             github_repo=None,
         )
 
-        async with CreateAuthenticatedSession() as session:
-            source = GitHubSource(session)
+        source = GitHubSource(session)
 
-            assert source.Applies(repo) is False
+        assert source.Applies(repo) is False
 
 
 # ----------------------------------------------------------------------
@@ -104,13 +120,14 @@ class TestGitHubSourceQuery:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_query_returns_valid_results(self, allgitstatus_repo: Repository) -> None:
+    async def test_query_returns_valid_results(
+        self, session: aiohttp.ClientSession, allgitstatus_repo: Repository
+    ) -> None:
         """Query returns five ResultInfo items with correct structure and content."""
 
-        async with CreateAuthenticatedSession() as session:
-            source = GitHubSource(session)
+        source = GitHubSource(session)
 
-            results = [info async for info in source.Query(allgitstatus_repo)]
+        results = [info async for info in source.Query(allgitstatus_repo)]
 
         # Verify we get exactly 5 ResultInfo items
         assert len(results) == 5
@@ -166,7 +183,7 @@ class TestGitHubSourceQuery:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_query_nonexistent_repo_returns_error(self) -> None:
+    async def test_query_nonexistent_repo_returns_error(self, session: aiohttp.ClientSession) -> None:
         """Query returns ErrorInfo for non-existent repository."""
 
         repo = Repository(
@@ -176,10 +193,9 @@ class TestGitHubSourceQuery:
             github_repo="nonexistent-repo-67890",
         )
 
-        async with CreateAuthenticatedSession() as session:
-            source = GitHubSource(session)
+        source = GitHubSource(session)
 
-            results = [info async for info in source.Query(repo)]
+        results = [info async for info in source.Query(repo)]
 
         # Both the main API call (stars) and the PR search API call fail for nonexistent repos
         assert len(results) == 2

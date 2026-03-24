@@ -5,6 +5,7 @@ import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
+import aiohttp
 from rich.text import Text
 from rich.traceback import Traceback
 from textual.app import App, ComposeResult, ScreenStackError
@@ -14,7 +15,6 @@ from textual.screen import ModalScreen
 from textual.widgets import DataTable, Footer, Header, Label, RichLog
 
 from AllGitStatus import __version__
-from AllGitStatus.Auth import CreateAuthenticatedSession
 from AllGitStatus.Repository import EnumerateRepositories, Repository
 from AllGitStatus.Sources.GitHubSource import GitHubSource
 from AllGitStatus.Sources.LocalGitSource import LocalGitSource
@@ -82,7 +82,7 @@ class MainApp(App):
     def __init__(
         self,
         working_dir: Path,
-        session_token: str | None,
+        github_pat: str | None,
         *args,
         debug: bool = False,
         **kwargs,
@@ -90,7 +90,7 @@ class MainApp(App):
         super().__init__(*args, **kwargs)
 
         self._working_dir = working_dir
-        self._session_token = session_token
+        self._github_pat = github_pat
         self._debug = debug
 
         self.title = "AllGitStatus{}".format(" [DEBUG]" if debug else "")
@@ -124,6 +124,10 @@ class MainApp(App):
             ],
         ] = {}
 
+        # The lifetime of this object is defined by `on_mount` and `on_unmount` as aiohttp.ClientSession
+        # requires an active event loop
+        self._github_session: aiohttp.ClientSession | None = None
+
     # ----------------------------------------------------------------------
     def compose(self) -> ComposeResult:  # noqa: D102
         yield Header()
@@ -136,10 +140,22 @@ class MainApp(App):
 
     # ----------------------------------------------------------------------
     async def on_mount(self) -> None:  # noqa: D102
+        assert self._github_session is None
+        self._github_session = aiohttp.ClientSession(
+            headers=GitHubSource.CreateGitHubHttpHeaders(self._github_pat)
+        )
+
         for column in COLUMN_MAP.values():
             self._data_table.add_column(Text(column.name, justify=column.justify))  # ty: ignore[invalid-argument-type]
 
         await self._ResetAllRepositories()
+
+    # ----------------------------------------------------------------------
+    async def on_unmount(self) -> None:  # noqa: D102
+        # Close the shared session when the app exits
+        if self._github_session is not None:
+            await self._github_session.close()
+            self._github_session = None
 
     # ----------------------------------------------------------------------
     async def on_data_table_cell_highlighted(self, message: DataTable.ColumnSelected) -> None:  # noqa: ARG002, D102
@@ -290,16 +306,17 @@ class MainApp(App):
 
         # ----------------------------------------------------------------------
         async def LoadCells() -> None:
-            async with CreateAuthenticatedSession(self._session_token) as session:
-                for source in [
-                    LocalGitSource(),
-                    GitHubSource(session),
-                ]:
-                    if not source.Applies(repository):
-                        continue
+            assert self._github_session is not None
 
-                    async for info in source.Query(repository):
-                        self._PopulateCell(repository_index, info)
+            for source in [
+                LocalGitSource(),
+                GitHubSource(self._github_session),
+            ]:
+                if not source.Applies(repository):
+                    continue
+
+                async for info in source.Query(repository):
+                    self._PopulateCell(repository_index, info)
 
         # ----------------------------------------------------------------------
 
