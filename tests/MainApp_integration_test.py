@@ -6,8 +6,9 @@ the MainApp UI interactions.
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
+import aiohttp
 import pytest
 from textual.coordinate import Coordinate
 from textual.widgets import DataTable, Footer, Header, Label, RichLog
@@ -107,7 +108,7 @@ class TestMainAppComposition:
     async def test_app_has_correct_title(self, working_dir: Path) -> None:
         """MainApp has the correct title."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             assert app.title == "AllGitStatus"
@@ -117,7 +118,7 @@ class TestMainAppComposition:
     async def test_app_composes_header(self, working_dir: Path) -> None:
         """MainApp composes a Header widget."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             headers = app.query(Header)
@@ -128,7 +129,7 @@ class TestMainAppComposition:
     async def test_app_composes_footer_with_version(self, working_dir: Path) -> None:
         """MainApp composes a Footer with version label."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             footers = app.query(Footer)
@@ -147,7 +148,7 @@ class TestMainAppComposition:
     async def test_app_composes_data_table(self, working_dir: Path) -> None:
         """MainApp composes a DataTable widget."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             data_tables = app.query(DataTable)
@@ -163,7 +164,7 @@ class TestMainAppComposition:
     async def test_app_composes_additional_info(self, working_dir: Path) -> None:
         """MainApp composes a RichLog for additional info."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             rich_logs = app.query(RichLog)
@@ -177,7 +178,7 @@ class TestMainAppComposition:
     async def test_data_table_has_correct_columns(self, working_dir: Path) -> None:
         """DataTable has all expected columns."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             data_table = app.query_one(DataTable)
@@ -196,7 +197,7 @@ class TestMainAppKeyBindings:
     async def test_key_1_focuses_data_table(self, working_dir: Path) -> None:
         """Pressing '1' focuses the data table."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             # Focus something else first
@@ -214,7 +215,7 @@ class TestMainAppKeyBindings:
     async def test_key_2_focuses_additional_info(self, working_dir: Path) -> None:
         """Pressing '2' focuses the additional info panel."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             # Focus data table first
@@ -232,7 +233,7 @@ class TestMainAppKeyBindings:
     async def test_key_q_quits_app(self, working_dir: Path) -> None:
         """Pressing 'q' quits the application."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             await pilot.press("q")
@@ -249,7 +250,7 @@ class TestMainAppCheckAction:
     async def test_refresh_all_disabled_when_no_repositories(self, working_dir: Path) -> None:
         """RefreshAll action is disabled when repositories are not loaded."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         # Don't load repositories
         app._repositories = None
@@ -264,7 +265,7 @@ class TestMainAppCheckAction:
     ) -> None:
         """RefreshAll action is enabled when repositories are loaded."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = mock_repos
 
         result = app.check_action("RefreshAll", ())
@@ -275,7 +276,7 @@ class TestMainAppCheckAction:
     async def test_refresh_selected_disabled_when_no_repositories(self, working_dir: Path) -> None:
         """RefreshSelected action is disabled when repositories are not loaded."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = None
 
         result = app.check_action("RefreshSelected", ())
@@ -288,7 +289,7 @@ class TestMainAppCheckAction:
     ) -> None:
         """RefreshSelected action is enabled when repositories are loaded."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = mock_repos
 
         result = app.check_action("RefreshSelected", ())
@@ -299,7 +300,7 @@ class TestMainAppCheckAction:
     async def test_pull_disabled_when_no_repositories(self, working_dir: Path) -> None:
         """PullSelected action is disabled when repositories are not loaded."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = None
 
         result = app.check_action("PullSelected", ())
@@ -312,7 +313,7 @@ class TestMainAppCheckAction:
     ) -> None:
         """PullSelected action is disabled when there are no remote changes."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = mock_repos
 
         # Set state data without remote changes
@@ -329,7 +330,7 @@ class TestMainAppCheckAction:
     ) -> None:
         """PullSelected action is enabled when there are remote changes."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             # Set up after mount to avoid reset
@@ -352,7 +353,7 @@ class TestMainAppCheckAction:
     async def test_push_disabled_when_no_repositories(self, working_dir: Path) -> None:
         """PushSelected action is disabled when repositories are not loaded."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = None
 
         result = app.check_action("PushSelected", ())
@@ -365,7 +366,7 @@ class TestMainAppCheckAction:
     ) -> None:
         """PushSelected action is disabled when there are no local changes."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
         app._repositories = mock_repos
 
         # Set state data without local changes
@@ -382,7 +383,7 @@ class TestMainAppCheckAction:
     ) -> None:
         """PushSelected action is enabled when there are local changes."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             # Set up after mount to avoid reset
@@ -405,7 +406,7 @@ class TestMainAppCheckAction:
     async def test_unknown_action_returns_true(self, working_dir: Path) -> None:
         """Unknown actions return True (enabled by default)."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         result = app.check_action("UnknownAction", ())
         assert result is True
@@ -424,7 +425,7 @@ class TestMainAppWithMockedRepositories:
             "AllGitStatus.MainApp.EnumerateRepositories",
             side_effect=lambda wd: mock_enumerate_repositories(wd),
         ):
-            app = MainApp(working_dir=working_dir, session_token=None)
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Allow modal to appear
@@ -448,16 +449,8 @@ class TestMainAppWithMockedRepositories:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            # Mock the authenticated session context manager
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for repositories to load
@@ -485,15 +478,8 @@ class TestMainAppActions:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -527,15 +513,8 @@ class TestMainAppActions:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -566,14 +545,9 @@ class TestMainAppActions:
 
         with (
             patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
             patch.object(LocalGitSource, "Pull", new_callable=AsyncMock) as mock_pull,
         ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -608,14 +582,9 @@ class TestMainAppActions:
 
         with (
             patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
             patch.object(LocalGitSource, "Push", new_callable=AsyncMock) as mock_push,
         ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -653,15 +622,8 @@ class TestMainAppPopulateCell:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -698,15 +660,8 @@ class TestMainAppPopulateCell:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -754,16 +709,9 @@ class TestMainAppPopulateCell:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
             # Create app with debug mode enabled
-            app = MainApp(working_dir=working_dir, session_token=None, debug=True)
+            app = MainApp(working_dir=working_dir, github_pat=None, debug=True)
 
             async with app.run_test() as pilot:
                 # Wait for initial load
@@ -806,15 +754,8 @@ class TestMainAppRepoNameDisplay:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for repositories to load
@@ -846,7 +787,7 @@ class TestMainAppNoneRepositories:
             yield  # Make it a generator
 
         with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
-            app = MainApp(working_dir=working_dir, session_token=None)
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for modal to complete
@@ -863,7 +804,7 @@ class TestMainAppNoneRepositories:
     async def test_on_repositories_complete_with_none_value(self, working_dir: Path) -> None:
         """OnRepositoriesComplete returns early when passed None."""
 
-        app = MainApp(working_dir=working_dir, session_token=None)
+        app = MainApp(working_dir=working_dir, github_pat=None)
 
         async with app.run_test() as pilot:
             # Manually call the callback with None to test the early return
@@ -1016,7 +957,7 @@ class TestGetRepositoriesModal:
             yield  # Make it a generator
 
         with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
-            app = MainApp(working_dir=working_dir, session_token=None)
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # The modal is pushed on mount, check if it's showing
@@ -1036,15 +977,8 @@ class TestGetRepositoriesModal:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for the modal worker to complete
@@ -1075,15 +1009,8 @@ class TestMainAppDataTableNavigation:
             for repo in repos:
                 yield repo
 
-        with (
-            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
-            patch("AllGitStatus.MainApp.CreateAuthenticatedSession") as mock_auth,
-        ):
-            mock_session = MagicMock()
-            mock_auth.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_auth.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            app = MainApp(working_dir=working_dir, session_token=None)
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
 
             async with app.run_test() as pilot:
                 # Wait for repos to load
@@ -1116,10 +1043,10 @@ class TestMainAppDebugMode:
     async def test_debug_mode_is_stored(self, working_dir: Path) -> None:
         """Debug mode flag is stored correctly."""
 
-        app_no_debug = MainApp(working_dir=working_dir, session_token=None, debug=False)
+        app_no_debug = MainApp(working_dir=working_dir, github_pat=None, debug=False)
         assert app_no_debug._debug is False
 
-        app_with_debug = MainApp(working_dir=working_dir, session_token=None, debug=True)
+        app_with_debug = MainApp(working_dir=working_dir, github_pat=None, debug=True)
         assert app_with_debug._debug is True
 
     # ----------------------------------------------------------------------
@@ -1127,24 +1054,8 @@ class TestMainAppDebugMode:
     async def test_debug_mode_changes_title(self, working_dir: Path) -> None:
         """Debug mode adds [DEBUG] to the title."""
 
-        app_no_debug = MainApp(working_dir=working_dir, session_token=None, debug=False)
+        app_no_debug = MainApp(working_dir=working_dir, github_pat=None, debug=False)
         assert app_no_debug.title == "AllGitStatus"
 
-        app_with_debug = MainApp(working_dir=working_dir, session_token=None, debug=True)
+        app_with_debug = MainApp(working_dir=working_dir, github_pat=None, debug=True)
         assert app_with_debug.title == "AllGitStatus [DEBUG]"
-
-
-# ----------------------------------------------------------------------
-class TestMainAppSessionToken:
-    """Tests for MainApp session token handling."""
-
-    # ----------------------------------------------------------------------
-    @pytest.mark.asyncio
-    async def test_session_token_is_stored(self, working_dir: Path) -> None:
-        """Session token is stored correctly."""
-
-        app_no_token = MainApp(working_dir=working_dir, session_token=None)
-        assert app_no_token._session_token is None
-
-        app_with_token = MainApp(working_dir=working_dir, session_token="test_token_123")
-        assert app_with_token._session_token == "test_token_123"

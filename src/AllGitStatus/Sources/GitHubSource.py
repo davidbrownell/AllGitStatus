@@ -12,6 +12,21 @@ class GitHubSource(Source):
     """Source for GitHub repository information (stars, forks, issues, etc.)."""
 
     # ----------------------------------------------------------------------
+    @staticmethod
+    def CreateGitHubHttpHeaders(github_pat: str | None = None) -> dict[str, str]:
+        """Create headers for GitHub API access."""
+
+        headers: dict[str, str] = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+        if github_pat:
+            headers["Authorization"] = f"Bearer {github_pat}"
+
+        return headers
+
+    # ----------------------------------------------------------------------
     def __init__(
         self,
         session: aiohttp.ClientSession,
