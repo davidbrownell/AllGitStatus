@@ -105,7 +105,7 @@ class MainApp(App):
 
         self._data_table.border_title = "[1] Repositories"
 
-        self._additional_info = RichLog(id="additional_info")
+        self._additional_info = RichLog(id="additional_info", auto_scroll=False)
         self._additional_info.border_title = "[2] Additional Info"
 
         self._repositories: list[Repository] | None = None
