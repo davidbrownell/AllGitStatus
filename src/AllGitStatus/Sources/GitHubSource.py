@@ -1,5 +1,7 @@
 # noqa: D100
 import re
+import textwrap
+
 from collections.abc import AsyncGenerator
 
 import aiohttp
@@ -45,7 +47,9 @@ class GitHubSource(Source):
 
         github_url = repo.remote_url.removesuffix(".git")
 
-        async for info in self._GenerateStandardInfo(repo, github_url):
+        persisted_info: dict[str, object] = {}
+
+        async for info in self._GenerateStandardInfo(repo, github_url, persisted_info):
             yield info
 
         async for info in self._GenerateIssueInfo(repo, github_url):
@@ -57,6 +61,13 @@ class GitHubSource(Source):
         async for info in self._GenerateSecurityAlertInfo(repo, github_url):
             yield info
 
+        default_branch = persisted_info.get("default_branch")
+
+        # Only generate CI/CD info if we have a default branch (repo API succeeded)
+        if isinstance(default_branch, str):
+            async for info in self._GenerateCICDInfo(repo, github_url, default_branch):
+                yield info
+
     # ----------------------------------------------------------------------
     # ----------------------------------------------------------------------
     # ----------------------------------------------------------------------
@@ -64,6 +75,7 @@ class GitHubSource(Source):
         self,
         repo: Repository,
         github_url: str,
+        persisted_info: dict[str, object],
     ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
         try:
             async with self._session.get(
@@ -71,6 +83,9 @@ class GitHubSource(Source):
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
+
+                # Capture default_branch for use by CI/CD status
+                persisted_info["default_branch"] = result.get("default_branch")
 
                 yield ResultInfo(
                     repo,
@@ -135,7 +150,7 @@ class GitHubSource(Source):
 
                 label_str = f" [{', '.join(issue_labels)}]" if issue_labels else ""
 
-                issue_data.append(f"  • #{issue_number}{label_str} {issue_title} (by {issue_author})")
+                issue_data.append(f"• #{issue_number}{label_str} {issue_title} (by {issue_author})")
 
             # Build additional info with issue details
             additional_info_lines = [
@@ -191,7 +206,7 @@ class GitHubSource(Source):
 
                 draft_indicator = "[DRAFT] " if pr_draft else ""
 
-                pr_data.append(f"  • #{pr_number} {draft_indicator}{pr_title} (by {pr_author})")
+                pr_data.append(f"• #{pr_number} {draft_indicator}{pr_title} (by {pr_author})")
 
             additional_info_lines = [
                 f"Pull Requests: {github_url}/pulls",
@@ -246,7 +261,7 @@ class GitHubSource(Source):
                 package = alert.get("security_vulnerability", {}).get("package", {})
 
                 alert_data.append(
-                    f"  • [{advisory.get('severity', 'unknown').upper()}] {package.get('name', 'unknown')}: {advisory.get('summary', 'No summary')}"
+                    f"• [{advisory.get('severity', 'unknown').upper()}] {package.get('name', 'unknown')}: {advisory.get('summary', 'No summary')}"
                 )
 
             # Build display value with icon based on severity
@@ -287,6 +302,118 @@ class GitHubSource(Source):
             yield ErrorInfo(
                 repo,
                 (self.__class__.__name__, "security_alerts"),
+                ex,
+            )
+
+    # ----------------------------------------------------------------------
+    async def _GenerateCICDInfo(
+        self,
+        repo: Repository,
+        github_url: str,
+        default_branch: str,
+    ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
+        info_key = (self.__class__.__name__, "cicd_status")
+
+        try:
+            url = f"https://api.github.com/repos/{repo.github_owner}/{repo.github_repo}/actions/runs?branch={default_branch}&per_page=100"
+
+            async with self._session.get(url) as response:
+                response.raise_for_status()
+                result = await response.json()
+
+                workflow_runs = result.get("workflow_runs", [])
+
+                if not workflow_runs:
+                    yield ResultInfo(
+                        repo,
+                        info_key,
+                        "🔘",
+                        textwrap.dedent(
+                            """\
+                                CI/CD Status: {github_url}/actions
+
+                                No workflow runs found for branch '{default_branch}'
+                                """,
+                        ).format(
+                            github_url=github_url,
+                            default_branch=default_branch,
+                        ),
+                    )
+                    return
+
+                # Group by workflow name and take only the most recent run for each
+                latest_per_workflow: dict[str, dict] = {}
+
+                for run in workflow_runs:
+                    workflow_id = run["workflow_id"]
+
+                    if workflow_id not in latest_per_workflow:
+                        latest_per_workflow[workflow_id] = run
+
+                # Count statuses based on most recent run per workflow
+                status_counts = {
+                    "success": 0,
+                    "failure": 0,
+                    "in_progress": 0,
+                }
+
+                run_details: list[str] = []
+
+                for run in latest_per_workflow.values():
+                    conclusion = run.get("conclusion")
+                    status = run.get("status")
+
+                    # Determine the effective status
+                    if status in ("in_progress", "queued", "pending", "waiting"):
+                        status_counts["in_progress"] += 1
+                        status_label = "IN PROG"
+                    elif conclusion == "success":
+                        status_counts["success"] += 1
+                        status_label = " PASS  "
+                    elif conclusion in ("failure", "cancelled", "timed_out"):
+                        status_counts["failure"] += 1
+                        status_label = " FAIL  "
+                    else:
+                        status_label = conclusion or status or "UNKNOWN"
+
+                    run_details.append(f"• [{status_label}] {run['created_at']} {run['path']}: {run['name']}")
+
+                # Determine display icon based on priority: failure > in_progress > success
+                if status_counts["failure"] > 0:
+                    display_icon = "❌"
+                elif status_counts["in_progress"] > 0:
+                    display_icon = "⏳"
+                elif status_counts["success"] > 0:
+                    display_icon = "✅"
+                else:
+                    display_icon = "🔘"
+
+                # Build additional info
+                additional_info_lines = [
+                    f"CI/CD Status: {github_url}/actions",
+                    "",
+                    f"Default Branch: {default_branch}",
+                    "",
+                    "Summary (latest run per workflow):",
+                    f"  Successful:  {status_counts['success']}",
+                    f"  Failed:      {status_counts['failure']}",
+                    f"  In Progress: {status_counts['in_progress']}",
+                    "",
+                ]
+
+                additional_info_lines.extend(run_details)
+
+                yield ResultInfo(
+                    repo,
+                    info_key,
+                    display_icon,
+                    "\n".join(additional_info_lines),
+                )
+
+        except Exception as ex:
+            yield ErrorInfo(
+                repo,
+                info_key,
                 ex,
             )
 

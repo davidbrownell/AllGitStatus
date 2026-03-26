@@ -194,7 +194,7 @@ class TestGitHubSourceQuery:
 
         # Verify all display values contain numeric counts (for ResultInfo items)
         for result in results:
-            if isinstance(result, ResultInfo):
+            if isinstance(result, ResultInfo) and result.key[1] != "cicd_status":
                 number_part = result.display_value.split()[0]
                 assert number_part.isdigit(), f"Expected number in '{result.display_value}'"
 
@@ -221,13 +221,15 @@ class TestGitHubSourceQuery:
 
         results = [info async for info in source.Query(repo)]
 
-        # All four API calls fail for nonexistent repos (stars, issues, pull_requests, security_alerts)
+        # Four API calls fail for nonexistent repos (stars, issues, pull_requests, security_alerts)
+        # CI/CD is skipped because we don't have default_branch when repo API fails
         assert len(results) == 4
-        assert all(isinstance(r, ErrorInfo) for r in results)
         assert results[0].key == ("GitHubSource", "stars")
         assert results[1].key == ("GitHubSource", "issues")
         assert results[2].key == ("GitHubSource", "pull_requests")
         assert results[3].key == ("GitHubSource", "security_alerts")
+        # All results are errors
+        assert all(isinstance(r, ErrorInfo) for r in results)
 
 
 # ----------------------------------------------------------------------
