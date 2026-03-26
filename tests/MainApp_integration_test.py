@@ -25,6 +25,7 @@ from AllGitStatus.MainApp import (
     NameColumn,
     PullRequestsColumn,
     RemoteColumn,
+    SecurityAlertsColumn,
     StarsColumn,
     StashesColumn,
     WatchersColumn,
@@ -921,6 +922,14 @@ class TestColumnDefinitions:
         assert PullRequestsColumn.justify == "center"
 
     # ----------------------------------------------------------------------
+    def test_security_alerts_column_properties(self) -> None:
+        """SecurityAlertsColumn has correct properties."""
+
+        assert SecurityAlertsColumn.value == 10
+        assert SecurityAlertsColumn.name == "Security"
+        assert SecurityAlertsColumn.justify == "center"
+
+    # ----------------------------------------------------------------------
     def test_column_map_contains_all_columns(self) -> None:
         """COLUMN_MAP contains mappings for all column types."""
 
@@ -937,6 +946,7 @@ class TestColumnDefinitions:
             WatchersColumn,
             IssuesColumn,
             PullRequestsColumn,
+            SecurityAlertsColumn,
         }
 
         assert unique_columns == expected_columns

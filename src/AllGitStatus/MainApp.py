@@ -43,6 +43,7 @@ ForksColumn = Column(6, "Forks", "center")
 WatchersColumn = Column(7, "Watchers", "center")
 IssuesColumn = Column(8, "Issues", "center")
 PullRequestsColumn = Column(9, "PRs", "center")
+SecurityAlertsColumn = Column(10, "Security", "center")
 
 COLUMN_MAP: dict[
     tuple[
@@ -61,6 +62,7 @@ COLUMN_MAP: dict[
     (GitHubSource.__name__, "watchers"): WatchersColumn,
     (GitHubSource.__name__, "issues"): IssuesColumn,
     (GitHubSource.__name__, "pull_requests"): PullRequestsColumn,
+    (GitHubSource.__name__, "security_alerts"): SecurityAlertsColumn,
 }
 
 
