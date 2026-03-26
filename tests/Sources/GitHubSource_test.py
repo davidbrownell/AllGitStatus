@@ -25,12 +25,15 @@ def github_repo() -> Repository:
 
 
 # ----------------------------------------------------------------------
-def create_mock_response(json_data: object, status: int = 200) -> MagicMock:
+def create_mock_response(
+    json_data: object, status: int = 200, headers: dict[str, str] | None = None
+) -> MagicMock:
     """Create a mock aiohttp response."""
 
     response = MagicMock()
     response.json = AsyncMock(return_value=json_data)
     response.raise_for_status = MagicMock()
+    response.headers = headers or {}
 
     if status >= 400:
         from aiohttp import ClientResponseError
@@ -98,7 +101,7 @@ class TestCreateGitHubHttpHeaders:
 
 # ----------------------------------------------------------------------
 class TestRepositoryInfo:
-    """Tests for repository info (stars, forks, issues, watchers)."""
+    """Tests for repository info (stars, forks, watchers)."""
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
@@ -109,8 +112,9 @@ class TestRepositoryInfo:
             create_mock_response(
                 {"stargazers_count": 42, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -134,8 +138,9 @@ class TestRepositoryInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 15, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -152,31 +157,6 @@ class TestRepositoryInfo:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_issues_result_has_correct_key_and_format(self, github_repo: Repository) -> None:
-        """Issues result has the correct key and display format."""
-
-        responses = [
-            create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 7, "subscribers_count": 3}
-            ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
-        ]
-        session = create_mock_session(responses)
-        source = GitHubSource(session)
-
-        results = [info async for info in source.Query(github_repo)]
-
-        issues_result = next(r for r in results if r.key[1] == "issues")
-
-        assert isinstance(issues_result, ResultInfo)
-        assert issues_result.key == ("GitHubSource", "issues")
-        assert "7" in issues_result.display_value
-        assert "🐛" in issues_result.display_value
-        assert issues_result.additional_info == "https://github.com/owner/repo/issues"
-
-    # ----------------------------------------------------------------------
-    @pytest.mark.asyncio
     async def test_watchers_result_has_correct_key_and_format(self, github_repo: Repository) -> None:
         """Watchers result has the correct key and display format."""
 
@@ -184,8 +164,9 @@ class TestRepositoryInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 25}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -209,8 +190,9 @@ class TestRepositoryInfo:
             create_mock_response(
                 {"stargazers_count": 0, "forks_count": 0, "open_issues_count": 0, "subscribers_count": 0}
             ),
-            create_mock_response({"total_count": 0}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -229,15 +211,16 @@ class TestRepositoryInfo:
 
         responses = [
             create_mock_response({}),  # Empty response - all fields missing
-            create_mock_response({"total_count": 0}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
 
         results = [info async for info in source.Query(github_repo)]
 
-        for key in ["stars", "forks", "issues", "watchers"]:
+        for key in ["stars", "forks", "watchers"]:
             result = next(r for r in results if r.key[1] == key)
             assert isinstance(result, ResultInfo)
             assert "0" in result.display_value
@@ -256,8 +239,9 @@ class TestRepositoryInfo:
                     "subscribers_count": 1000,
                 }
             ),
-            create_mock_response({"total_count": 50}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -270,9 +254,6 @@ class TestRepositoryInfo:
         forks_result = next(r for r in results if r.key[1] == "forks")
         assert "9999" in forks_result.display_value
 
-        issues_result = next(r for r in results if r.key[1] == "issues")
-        assert "500" in issues_result.display_value
-
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_url_strips_git_suffix(self, github_repo: Repository) -> None:
@@ -282,8 +263,9 @@ class TestRepositoryInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -297,6 +279,458 @@ class TestRepositoryInfo:
 
 
 # ----------------------------------------------------------------------
+class TestIssues:
+    """Tests for issues functionality."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_result_has_correct_key_and_format(self, github_repo: Repository) -> None:
+        """Issues result has the correct key and display format."""
+
+        issues = [
+            {"number": 1, "title": "First Issue", "user": {"login": "user1"}, "labels": []},
+            {"number": 2, "title": "Second Issue", "user": {"login": "user2"}, "labels": []},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        assert issues_result.key == ("GitHubSource", "issues")
+        assert "2" in issues_result.display_value
+        assert "🐛" in issues_result.display_value
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_zero_count(self, github_repo: Repository) -> None:
+        """Issues with zero count displays correctly."""
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 0, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Empty issues list
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        assert "0" in issues_result.display_value
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_additional_info_contains_url(self, github_repo: Repository) -> None:
+        """Issues additional info contains the issues page URL."""
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        assert "https://github.com/owner/repo/issues" in cast(str, issues_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_additional_info_contains_total_count(self, github_repo: Repository) -> None:
+        """Issues additional info contains the total count."""
+
+        issues = [
+            {"number": 1, "title": "First Issue", "user": {"login": "user1"}, "labels": []},
+            {"number": 2, "title": "Second Issue", "user": {"login": "user2"}, "labels": []},
+            {"number": 3, "title": "Third Issue", "user": {"login": "user3"}, "labels": []},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        assert "Total Open Issues: 3" in cast(str, issues_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_additional_info_shows_issue_details(self, github_repo: Repository) -> None:
+        """Issues additional info shows issue number, title, and author."""
+
+        issues = [
+            {"number": 42, "title": "Bug in login flow", "user": {"login": "reporter1"}, "labels": []},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 1, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        assert "#42" in cast(str, issues_result.additional_info)
+        assert "Bug in login flow" in cast(str, issues_result.additional_info)
+        assert "reporter1" in cast(str, issues_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_with_labels(self, github_repo: Repository) -> None:
+        """Issues with labels show the labels in the output."""
+
+        issues = [
+            {
+                "number": 1,
+                "title": "Bug report",
+                "user": {"login": "user1"},
+                "labels": [{"name": "bug"}, {"name": "priority-high"}],
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 1, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        additional_info = cast(str, issues_result.additional_info)
+        assert "[bug, priority-high]" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_label_breakdown(self, github_repo: Repository) -> None:
+        """Issues with labels show a label breakdown in additional info."""
+
+        issues = [
+            {
+                "number": 1,
+                "title": "Issue 1",
+                "user": {"login": "user1"},
+                "labels": [{"name": "bug"}],
+            },
+            {
+                "number": 2,
+                "title": "Issue 2",
+                "user": {"login": "user2"},
+                "labels": [{"name": "bug"}, {"name": "enhancement"}],
+            },
+            {
+                "number": 3,
+                "title": "Issue 3",
+                "user": {"login": "user3"},
+                "labels": [{"name": "enhancement"}],
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        additional_info = cast(str, issues_result.additional_info)
+        assert "By Label:" in additional_info
+        assert "bug: 2" in additional_info
+        assert "enhancement: 2" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_missing_fields_use_defaults(self, github_repo: Repository) -> None:
+        """Issues with missing fields use default values."""
+
+        issues = [
+            {},  # All fields missing
+            {"number": 1},  # Only number
+            {"title": "Some title"},  # Only title
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        additional_info = cast(str, issues_result.additional_info)
+        # Missing number defaults to "?"
+        assert "#?" in additional_info
+        # Missing title defaults to "No title"
+        assert "No title" in additional_info
+        # Missing author defaults to "unknown"
+        assert "unknown" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_shows_all_issues(self, github_repo: Repository) -> None:
+        """All issues are shown in additional info."""
+
+        issues = [
+            {"number": i, "title": f"Issue {i}", "user": {"login": f"user{i}"}, "labels": []}
+            for i in range(1, 6)
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 5, "subscribers_count": 3}
+            ),
+            create_mock_response(issues),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        additional_info = cast(str, issues_result.additional_info)
+        # Verify all issues are shown
+        for i in range(1, 6):
+            assert f"#{i}" in additional_info
+            assert f"Issue {i}" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_filters_out_pull_requests(self, github_repo: Repository) -> None:
+        """Pull requests are filtered out from the issues list."""
+
+        # GitHub API returns PRs as issues with a "pull_request" key
+        items = [
+            {"number": 1, "title": "Real Issue", "user": {"login": "user1"}, "labels": []},
+            {
+                "number": 2,
+                "title": "This is a PR",
+                "user": {"login": "user2"},
+                "labels": [],
+                "pull_request": {"url": "https://api.github.com/repos/owner/repo/pulls/2"},
+            },
+            {"number": 3, "title": "Another Issue", "user": {"login": "user3"}, "labels": []},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+            ),
+            create_mock_response(items),  # Issues API (includes PRs)
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        # Should only count 2 issues (not the PR)
+        assert "2" in issues_result.display_value
+        assert "Total Open Issues: 2" in cast(str, issues_result.additional_info)
+        # PR should not be in additional info
+        assert "This is a PR" not in cast(str, issues_result.additional_info)
+        # Real issues should be there
+        assert "Real Issue" in cast(str, issues_result.additional_info)
+        assert "Another Issue" in cast(str, issues_result.additional_info)
+
+
+# ----------------------------------------------------------------------
+class TestIssuesPagination:
+    """Tests for issues pagination."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_pagination_fetches_all_pages(self, github_repo: Repository) -> None:
+        """Issues pagination fetches all pages via Link header."""
+
+        # Create issues for two pages
+        page1_issues = [
+            {"number": 1, "title": "Issue 1", "user": {"login": "user1"}, "labels": []},
+            {"number": 2, "title": "Issue 2", "user": {"login": "user2"}, "labels": []},
+        ]
+        page2_issues = [
+            {"number": 3, "title": "Issue 3", "user": {"login": "user3"}, "labels": []},
+        ]
+
+        # Create responses with Link header for pagination
+        page1_response = create_mock_response(
+            page1_issues,
+            headers={"Link": '<https://api.github.com/repos/owner/repo/issues?page=2>; rel="next"'},
+        )
+        page2_response = create_mock_response(page2_issues)
+
+        # Need a custom session that returns different responses for pagination
+        session = MagicMock()
+
+        def get_context_manager(url, *args, **kwargs):
+            cm = MagicMock()
+            # Determine which response based on the URL
+            if "issues" in url and "page=2" in url:
+                cm.__aenter__ = AsyncMock(return_value=page2_response)
+            elif "/issues" in url:
+                cm.__aenter__ = AsyncMock(return_value=page1_response)
+            elif "/pulls" in url:
+                cm.__aenter__ = AsyncMock(return_value=create_mock_response([]))
+            elif "/dependabot/alerts" in url:
+                cm.__aenter__ = AsyncMock(return_value=create_mock_response([]))
+            else:
+                # Standard repo info
+                cm.__aenter__ = AsyncMock(
+                    return_value=create_mock_response(
+                        {
+                            "stargazers_count": 10,
+                            "forks_count": 5,
+                            "open_issues_count": 3,
+                            "subscribers_count": 3,
+                        }
+                    )
+                )
+            cm.__aexit__ = AsyncMock(return_value=None)
+            return cm
+
+        session.get = get_context_manager
+
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ResultInfo)
+        # Total should be 3 (from both pages)
+        assert "3" in issues_result.display_value
+        assert "Total Open Issues: 3" in cast(str, issues_result.additional_info)
+        # All issues should be in additional info
+        assert "#1" in cast(str, issues_result.additional_info)
+        assert "#2" in cast(str, issues_result.additional_info)
+        assert "#3" in cast(str, issues_result.additional_info)
+
+
+# ----------------------------------------------------------------------
+class TestIssuesErrorHandling:
+    """Tests for issues error handling."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_api_error_returns_error_info(self, github_repo: Repository) -> None:
+        """Issues API error returns ErrorInfo."""
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([], status=403),  # Issues API - Rate limited or forbidden
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        issues_result = next(r for r in results if r.key[1] == "issues")
+
+        assert isinstance(issues_result, ErrorInfo)
+        assert issues_result.key == ("GitHubSource", "issues")
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_issues_error_does_not_affect_other_results(self, github_repo: Repository) -> None:
+        """Issues API error does not affect stars, forks, watchers, PRs results."""
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([], status=500),  # Issues API - Server error
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        # Stars, forks, watchers, PRs, security_alerts should all be ResultInfo
+        for key in ["stars", "forks", "watchers", "pull_requests", "security_alerts"]:
+            result = next(r for r in results if r.key[1] == key)
+            assert isinstance(result, ResultInfo)
+
+
+# ----------------------------------------------------------------------
 class TestPullRequests:
     """Tests for pull requests functionality."""
 
@@ -305,12 +739,18 @@ class TestPullRequests:
     async def test_pull_requests_result_has_correct_key_and_format(self, github_repo: Repository) -> None:
         """Pull requests result has the correct key and display format."""
 
+        prs = [
+            {"number": 1, "title": "First PR", "user": {"login": "user1"}, "draft": False},
+            {"number": 2, "title": "Second PR", "user": {"login": "user2"}, "draft": False},
+        ]
+
         responses = [
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 8}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response(prs),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -321,9 +761,8 @@ class TestPullRequests:
 
         assert isinstance(pr_result, ResultInfo)
         assert pr_result.key == ("GitHubSource", "pull_requests")
-        assert "8" in pr_result.display_value
+        assert "2" in pr_result.display_value
         assert "🔀" in pr_result.display_value
-        assert pr_result.additional_info == "https://github.com/owner/repo/pulls"
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
@@ -334,8 +773,9 @@ class TestPullRequests:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 0}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # Empty PR list
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -349,15 +789,16 @@ class TestPullRequests:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_pull_requests_missing_total_count_defaults_to_zero(self, github_repo: Repository) -> None:
-        """Missing total_count in PR response defaults to zero."""
+    async def test_pull_requests_additional_info_contains_url(self, github_repo: Repository) -> None:
+        """Pull requests additional info contains the pulls page URL."""
 
         responses = [
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({}),  # Missing total_count
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -367,7 +808,237 @@ class TestPullRequests:
         pr_result = next(r for r in results if r.key[1] == "pull_requests")
 
         assert isinstance(pr_result, ResultInfo)
-        assert "0" in pr_result.display_value
+        assert "https://github.com/owner/repo/pulls" in cast(str, pr_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pull_requests_additional_info_contains_total_count(self, github_repo: Repository) -> None:
+        """Pull requests additional info contains the total count."""
+
+        prs = [
+            {"number": 1, "title": "First PR", "user": {"login": "user1"}, "draft": False},
+            {"number": 2, "title": "Second PR", "user": {"login": "user2"}, "draft": False},
+            {"number": 3, "title": "Third PR", "user": {"login": "user3"}, "draft": False},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response(prs),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        pr_result = next(r for r in results if r.key[1] == "pull_requests")
+
+        assert isinstance(pr_result, ResultInfo)
+        assert "Total Open PRs: 3" in cast(str, pr_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pull_requests_additional_info_shows_pr_details(self, github_repo: Repository) -> None:
+        """Pull requests additional info shows PR number, title, and author."""
+
+        prs = [
+            {"number": 42, "title": "Add new feature", "user": {"login": "contributor1"}, "draft": False},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response(prs),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        pr_result = next(r for r in results if r.key[1] == "pull_requests")
+
+        assert isinstance(pr_result, ResultInfo)
+        assert "#42" in cast(str, pr_result.additional_info)
+        assert "Add new feature" in cast(str, pr_result.additional_info)
+        assert "contributor1" in cast(str, pr_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pull_requests_draft_indicator(self, github_repo: Repository) -> None:
+        """Draft PRs show [DRAFT] indicator."""
+
+        prs = [
+            {"number": 1, "title": "Draft PR", "user": {"login": "user1"}, "draft": True},
+            {"number": 2, "title": "Regular PR", "user": {"login": "user2"}, "draft": False},
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response(prs),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        pr_result = next(r for r in results if r.key[1] == "pull_requests")
+
+        assert isinstance(pr_result, ResultInfo)
+        additional_info = cast(str, pr_result.additional_info)
+        assert "[DRAFT]" in additional_info
+        # The draft indicator should appear before the draft PR title
+        assert "[DRAFT] Draft PR" in additional_info
+        # The regular PR should not have the draft indicator
+        assert "Regular PR (by user2)" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pull_requests_missing_fields_use_defaults(self, github_repo: Repository) -> None:
+        """PRs with missing fields use default values."""
+
+        prs = [
+            {},  # All fields missing
+            {"number": 1},  # Only number
+            {"title": "Some title"},  # Only title
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response(prs),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        pr_result = next(r for r in results if r.key[1] == "pull_requests")
+
+        assert isinstance(pr_result, ResultInfo)
+        additional_info = cast(str, pr_result.additional_info)
+        # Missing number defaults to "?"
+        assert "#?" in additional_info
+        # Missing title defaults to "No title"
+        assert "No title" in additional_info
+        # Missing author defaults to "unknown"
+        assert "unknown" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pull_requests_shows_all_prs(self, github_repo: Repository) -> None:
+        """All PRs are shown in additional info."""
+
+        prs = [
+            {"number": i, "title": f"PR {i}", "user": {"login": f"user{i}"}, "draft": False}
+            for i in range(1, 6)
+        ]
+
+        responses = [
+            create_mock_response(
+                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response(prs),  # PRs API
+            create_mock_response([]),  # Security alerts API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        pr_result = next(r for r in results if r.key[1] == "pull_requests")
+
+        assert isinstance(pr_result, ResultInfo)
+        additional_info = cast(str, pr_result.additional_info)
+        # Verify all PRs are shown
+        for i in range(1, 6):
+            assert f"#{i}" in additional_info
+            assert f"PR {i}" in additional_info
+
+
+# ----------------------------------------------------------------------
+class TestPullRequestsPagination:
+    """Tests for pull requests pagination."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pull_requests_pagination_fetches_all_pages(self, github_repo: Repository) -> None:
+        """Pull requests pagination fetches all pages via Link header."""
+
+        # Create PRs for two pages
+        page1_prs = [
+            {"number": 1, "title": "PR 1", "user": {"login": "user1"}, "draft": False},
+            {"number": 2, "title": "PR 2", "user": {"login": "user2"}, "draft": False},
+        ]
+        page2_prs = [
+            {"number": 3, "title": "PR 3", "user": {"login": "user3"}, "draft": False},
+        ]
+
+        # Create responses with Link header for pagination
+        page1_response = create_mock_response(
+            page1_prs,
+            headers={"Link": '<https://api.github.com/repos/owner/repo/pulls?page=2>; rel="next"'},
+        )
+        page2_response = create_mock_response(page2_prs)
+
+        # Need a custom session that returns different responses for pagination
+        session = MagicMock()
+
+        def get_context_manager(url, *args, **kwargs):
+            cm = MagicMock()
+            # Determine which response based on the URL or call order
+            if "page=2" in url:
+                cm.__aenter__ = AsyncMock(return_value=page2_response)
+            elif "/pulls" in url:
+                cm.__aenter__ = AsyncMock(return_value=page1_response)
+            elif "/issues" in url:
+                cm.__aenter__ = AsyncMock(return_value=create_mock_response([]))
+            elif "/dependabot/alerts" in url:
+                cm.__aenter__ = AsyncMock(return_value=create_mock_response([]))
+            else:
+                # Standard repo info
+                cm.__aenter__ = AsyncMock(
+                    return_value=create_mock_response(
+                        {
+                            "stargazers_count": 10,
+                            "forks_count": 5,
+                            "open_issues_count": 2,
+                            "subscribers_count": 3,
+                        }
+                    )
+                )
+            cm.__aexit__ = AsyncMock(return_value=None)
+            return cm
+
+        session.get = get_context_manager
+
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        pr_result = next(r for r in results if r.key[1] == "pull_requests")
+
+        assert isinstance(pr_result, ResultInfo)
+        # Total should be 3 (from both pages)
+        assert "3" in pr_result.display_value
+        assert "Total Open PRs: 3" in cast(str, pr_result.additional_info)
+        # All PRs should be in additional info
+        assert "#1" in cast(str, pr_result.additional_info)
+        assert "#2" in cast(str, pr_result.additional_info)
+        assert "#3" in cast(str, pr_result.additional_info)
 
 
 # ----------------------------------------------------------------------
@@ -381,8 +1052,9 @@ class TestRepoApiErrorHandling:
 
         responses = [
             create_mock_response({}, status=404),  # Repo not found
-            create_mock_response({"total_count": 0}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -396,13 +1068,14 @@ class TestRepoApiErrorHandling:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_repo_api_error_does_not_yield_forks_issues_watchers(self, github_repo: Repository) -> None:
-        """Repository API error means forks, issues, watchers are not yielded."""
+    async def test_repo_api_error_does_not_yield_forks_watchers(self, github_repo: Repository) -> None:
+        """Repository API error means forks, watchers are not yielded (but issues still run separately)."""
 
         responses = [
             create_mock_response({}, status=404),  # Repo not found
-            create_mock_response({"total_count": 0}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API (still runs independently)
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -411,25 +1084,26 @@ class TestRepoApiErrorHandling:
 
         result_keys = [r.key[1] for r in results]
 
-        # When repo API fails, we only get ErrorInfo for stars, then PRs and security_alerts still run
+        # When repo API fails, we only get ErrorInfo for stars, but issues, PRs and security_alerts still run
         assert "stars" in result_keys
         assert "forks" not in result_keys
-        assert "issues" not in result_keys
         assert "watchers" not in result_keys
+        assert "issues" in result_keys  # Issues now runs independently
         assert "pull_requests" in result_keys
         assert "security_alerts" in result_keys
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_pr_api_error_returns_error_info(self, github_repo: Repository) -> None:
-        """PR search API error returns ErrorInfo."""
+        """PR API error returns ErrorInfo."""
 
         responses = [
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({}, status=403),  # Rate limited or forbidden
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([], status=403),  # PRs - Rate limited or forbidden
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -450,8 +1124,9 @@ class TestRepoApiErrorHandling:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({}, status=500),  # Server error
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([], status=500),  # PRs - Server error
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -477,7 +1152,8 @@ class TestSecurityAlertsNoAlerts:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
             create_mock_response([]),  # Empty alerts array
         ]
         session = create_mock_session(responses)
@@ -500,8 +1176,9 @@ class TestSecurityAlertsNoAlerts:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -537,8 +1214,9 @@ class TestSecurityAlertsCriticalSeverity:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -570,8 +1248,9 @@ class TestSecurityAlertsCriticalSeverity:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -605,8 +1284,9 @@ class TestSecurityAlertsHighSeverity:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -639,8 +1319,9 @@ class TestSecurityAlertsMediumLowSeverity:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -668,8 +1349,9 @@ class TestSecurityAlertsMediumLowSeverity:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -718,8 +1400,9 @@ class TestSecurityAlertsSeverityCounting:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -755,8 +1438,9 @@ class TestSecurityAlertsSeverityCounting:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -788,8 +1472,9 @@ class TestSecurityAlertsAdditionalInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -819,8 +1504,9 @@ class TestSecurityAlertsAdditionalInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -851,8 +1537,9 @@ class TestSecurityAlertsAdditionalInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -875,8 +1562,9 @@ class TestSecurityAlertsAdditionalInfo:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response([]),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -902,7 +1590,8 @@ class TestSecurityAlertsErrorHandling:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
             create_mock_response({}, status=403),  # Forbidden - no access to security alerts
         ]
         session = create_mock_session(responses)
@@ -924,8 +1613,9 @@ class TestSecurityAlertsErrorHandling:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response({}, status=403),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response({}, status=403),  # Security alerts API error
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -961,8 +1651,9 @@ class TestSecurityAlertsMissingFields:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -990,8 +1681,9 @@ class TestSecurityAlertsMissingFields:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -1019,8 +1711,9 @@ class TestSecurityAlertsMissingFields:
             create_mock_response(
                 {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
             ),
-            create_mock_response({"total_count": 1}),
-            create_mock_response(alerts),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response(alerts),  # Security alerts API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)

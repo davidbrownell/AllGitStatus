@@ -176,6 +176,17 @@ class TestMainAppComposition:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
+    async def test_additional_info_has_auto_scroll_disabled(self, working_dir: Path) -> None:
+        """Additional info RichLog has auto_scroll disabled to show content from the top."""
+
+        app = MainApp(working_dir=working_dir, github_pat=None)
+
+        async with app.run_test() as pilot:
+            rich_log = app.query_one("#additional_info", RichLog)
+            assert rich_log.auto_scroll is False
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
     async def test_data_table_has_correct_columns(self, working_dir: Path) -> None:
         """DataTable has all expected columns."""
 
