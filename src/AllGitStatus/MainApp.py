@@ -45,6 +45,7 @@ IssuesColumn = Column(8, "Issues", "center")
 PullRequestsColumn = Column(9, "PRs", "center")
 SecurityAlertsColumn = Column(10, "Security", "center")
 CICDStatusColumn = Column(11, "CI/CD", "center")
+ArchivedColumn = Column(12, "Archived", "center")
 
 COLUMN_MAP: dict[
     tuple[
@@ -65,6 +66,7 @@ COLUMN_MAP: dict[
     (GitHubSource.__name__, "pull_requests"): PullRequestsColumn,
     (GitHubSource.__name__, "security_alerts"): SecurityAlertsColumn,
     (GitHubSource.__name__, "cicd_status"): CICDStatusColumn,
+    (GitHubSource.__name__, "archived"): ArchivedColumn,
 }
 
 

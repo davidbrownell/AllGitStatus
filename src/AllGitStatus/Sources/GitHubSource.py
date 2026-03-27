@@ -63,8 +63,9 @@ class GitHubSource(Source):
 
         default_branch = persisted_info.get("default_branch")
 
-        # Only generate CI/CD info if we have a default branch (repo API succeeded)
-        if isinstance(default_branch, str):
+        if default_branch:
+            assert isinstance(default_branch, str), default_branch
+
             async for info in self._GenerateCICDInfo(repo, github_url, default_branch):
                 yield info
 
@@ -106,6 +107,15 @@ class GitHubSource(Source):
                     (self.__class__.__name__, "watchers"),
                     f"{result.get('subscribers_count', 0):5} 👀",
                     f"{github_url}/watchers",
+                )
+
+                is_archived = result.get("archived", False)
+
+                yield ResultInfo(
+                    repo,
+                    (self.__class__.__name__, "archived"),
+                    "📦" if is_archived else "",
+                    f"Archived: {'Yes' if is_archived else 'No'}",
                 )
 
         except Exception as ex:

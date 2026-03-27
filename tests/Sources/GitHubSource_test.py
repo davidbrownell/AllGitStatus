@@ -311,6 +311,108 @@ class TestRepositoryInfo:
 
 
 # ----------------------------------------------------------------------
+class TestArchived:
+    """Tests for archived status functionality."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_archived_repo_shows_box_emoji(self, github_repo: Repository) -> None:
+        """Archived repository shows box emoji."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                    "archived": True,
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": []}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        archived_result = next(r for r in results if r.key[1] == "archived")
+
+        assert isinstance(archived_result, ResultInfo)
+        assert archived_result.key == ("GitHubSource", "archived")
+        assert "📦" in archived_result.display_value
+        assert archived_result.additional_info == "Archived: Yes"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_non_archived_repo_shows_empty_string(self, github_repo: Repository) -> None:
+        """Non-archived repository shows empty display value."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                    "archived": False,
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": []}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        archived_result = next(r for r in results if r.key[1] == "archived")
+
+        assert isinstance(archived_result, ResultInfo)
+        assert archived_result.display_value == ""
+        assert archived_result.additional_info == "Archived: No"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_missing_archived_field_defaults_to_not_archived(self, github_repo: Repository) -> None:
+        """Missing archived field defaults to not archived."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                    # No "archived" field
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": []}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        archived_result = next(r for r in results if r.key[1] == "archived")
+
+        assert isinstance(archived_result, ResultInfo)
+        assert archived_result.display_value == ""
+        assert archived_result.additional_info == "Archived: No"
+
+
+# ----------------------------------------------------------------------
 class TestIssues:
     """Tests for issues functionality."""
 
@@ -1879,12 +1981,12 @@ class TestSecurityAlertsErrorHandling:
 
         results = [info async for info in source.Query(github_repo)]
 
-        # Should have 7 results total (stars, forks, watchers, issues, PRs, security_alerts error, cicd_status)
-        assert len(results) == 7
+        # Should have 8 results total (stars, forks, watchers, issues, PRs, security_alerts error, cicd_status, archived)
+        assert len(results) == 8
 
-        # Stars, forks, issues, watchers, PRs, cicd_status should all be ResultInfo
+        # Stars, forks, issues, watchers, PRs, cicd_status, archived should all be ResultInfo
         non_security_results = [r for r in results if r.key[1] != "security_alerts"]
-        assert len(non_security_results) == 6
+        assert len(non_security_results) == 7
         assert all(isinstance(r, ResultInfo) for r in non_security_results)
 
 
