@@ -44,6 +44,7 @@ WatchersColumn = Column(7, "Watchers", "center")
 IssuesColumn = Column(8, "Issues", "center")
 PullRequestsColumn = Column(9, "PRs", "center")
 SecurityAlertsColumn = Column(10, "Security", "center")
+CICDStatusColumn = Column(11, "CI/CD", "center")
 
 COLUMN_MAP: dict[
     tuple[
@@ -63,6 +64,7 @@ COLUMN_MAP: dict[
     (GitHubSource.__name__, "issues"): IssuesColumn,
     (GitHubSource.__name__, "pull_requests"): PullRequestsColumn,
     (GitHubSource.__name__, "security_alerts"): SecurityAlertsColumn,
+    (GitHubSource.__name__, "cicd_status"): CICDStatusColumn,
 }
 
 
@@ -329,7 +331,7 @@ class MainApp(App):
         column = COLUMN_MAP[info.key]
 
         if isinstance(info, ErrorInfo):
-            display_value = "❌"
+            display_value = "💥"
             additional_info = Traceback.from_exception(
                 type(info.error),
                 info.error,

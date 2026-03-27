@@ -110,7 +110,13 @@ class TestRepositoryInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 42, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 42,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -136,7 +142,13 @@ class TestRepositoryInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 15, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 15,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -162,7 +174,13 @@ class TestRepositoryInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 25}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 25,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -188,7 +206,13 @@ class TestRepositoryInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 0, "forks_count": 0, "open_issues_count": 0, "subscribers_count": 0}
+                {
+                    "stargazers_count": 0,
+                    "forks_count": 0,
+                    "open_issues_count": 0,
+                    "subscribers_count": 0,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -210,10 +234,11 @@ class TestRepositoryInfo:
         """Missing count fields default to zero."""
 
         responses = [
-            create_mock_response({}),  # Empty response - all fields missing
+            create_mock_response({"default_branch": "main"}),  # Only default_branch - count fields missing
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": []}),  # CI/CD API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -237,6 +262,7 @@ class TestRepositoryInfo:
                     "forks_count": 9999,
                     "open_issues_count": 500,
                     "subscribers_count": 1000,
+                    "default_branch": "main",
                 }
             ),
             create_mock_response([]),  # Issues API
@@ -261,7 +287,13 @@ class TestRepositoryInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -294,7 +326,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -319,7 +357,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 0, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 0,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Empty issues list
             create_mock_response([]),  # PRs API
@@ -342,7 +386,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -371,7 +421,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 3,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -398,7 +454,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 1, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 1,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -432,7 +494,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 1, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 1,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -477,7 +545,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 3,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -509,7 +583,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 3,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -543,7 +623,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 5, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(issues),  # Issues API
             create_mock_response([]),  # PRs API
@@ -583,7 +669,13 @@ class TestIssues:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 3, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 3,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response(items),  # Issues API (includes PRs)
             create_mock_response([]),  # PRs API
@@ -655,6 +747,7 @@ class TestIssuesPagination:
                             "forks_count": 5,
                             "open_issues_count": 3,
                             "subscribers_count": 3,
+                            "default_branch": "main",
                         }
                     )
                 )
@@ -690,7 +783,13 @@ class TestIssuesErrorHandling:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([], status=403),  # Issues API - Rate limited or forbidden
             create_mock_response([]),  # PRs API
@@ -713,7 +812,13 @@ class TestIssuesErrorHandling:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([], status=500),  # Issues API - Server error
             create_mock_response([]),  # PRs API
@@ -746,7 +851,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response(prs),  # PRs API
@@ -771,7 +882,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # Empty PR list
@@ -794,7 +911,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -823,7 +946,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response(prs),  # PRs API
@@ -850,7 +979,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response(prs),  # PRs API
@@ -880,7 +1015,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response(prs),  # PRs API
@@ -914,7 +1055,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response(prs),  # PRs API
@@ -948,7 +1095,13 @@ class TestPullRequests:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response(prs),  # PRs API
@@ -1017,6 +1170,7 @@ class TestPullRequestsPagination:
                             "forks_count": 5,
                             "open_issues_count": 2,
                             "subscribers_count": 3,
+                            "default_branch": "main",
                         }
                     )
                 )
@@ -1099,7 +1253,13 @@ class TestRepoApiErrorHandling:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([], status=403),  # PRs - Rate limited or forbidden
@@ -1122,7 +1282,13 @@ class TestRepoApiErrorHandling:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([], status=500),  # PRs - Server error
@@ -1150,7 +1316,13 @@ class TestSecurityAlertsNoAlerts:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1174,7 +1346,13 @@ class TestSecurityAlertsNoAlerts:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1212,7 +1390,13 @@ class TestSecurityAlertsCriticalSeverity:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1246,7 +1430,13 @@ class TestSecurityAlertsCriticalSeverity:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1282,7 +1472,13 @@ class TestSecurityAlertsHighSeverity:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1317,7 +1513,13 @@ class TestSecurityAlertsMediumLowSeverity:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1347,7 +1549,13 @@ class TestSecurityAlertsMediumLowSeverity:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1398,7 +1606,13 @@ class TestSecurityAlertsSeverityCounting:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1436,7 +1650,13 @@ class TestSecurityAlertsSeverityCounting:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1470,7 +1690,13 @@ class TestSecurityAlertsAdditionalInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1502,7 +1728,13 @@ class TestSecurityAlertsAdditionalInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1535,7 +1767,13 @@ class TestSecurityAlertsAdditionalInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1560,7 +1798,13 @@ class TestSecurityAlertsAdditionalInfo:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1588,7 +1832,13 @@ class TestSecurityAlertsErrorHandling:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1611,23 +1861,30 @@ class TestSecurityAlertsErrorHandling:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response({}, status=403),  # Security alerts API error
+            create_mock_response({"workflow_runs": []}),  # CI/CD API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
 
         results = [info async for info in source.Query(github_repo)]
 
-        # Should have 6 results total
-        assert len(results) == 6
+        # Should have 7 results total (stars, forks, watchers, issues, PRs, security_alerts error, cicd_status)
+        assert len(results) == 7
 
-        # Stars, forks, issues, watchers, PRs should all be ResultInfo
+        # Stars, forks, issues, watchers, PRs, cicd_status should all be ResultInfo
         non_security_results = [r for r in results if r.key[1] != "security_alerts"]
-        assert len(non_security_results) == 5
+        assert len(non_security_results) == 6
         assert all(isinstance(r, ResultInfo) for r in non_security_results)
 
 
@@ -1649,7 +1906,13 @@ class TestSecurityAlertsMissingFields:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1679,7 +1942,13 @@ class TestSecurityAlertsMissingFields:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1709,7 +1978,13 @@ class TestSecurityAlertsMissingFields:
 
         responses = [
             create_mock_response(
-                {"stargazers_count": 10, "forks_count": 5, "open_issues_count": 2, "subscribers_count": 3}
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "open_issues_count": 2,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
             ),
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
@@ -1724,3 +1999,629 @@ class TestSecurityAlertsMissingFields:
 
         assert isinstance(security_result, ResultInfo)
         assert "[UNKNOWN]" in cast(str, security_result.additional_info)
+
+
+# ----------------------------------------------------------------------
+class TestCICDStatusNoWorkflows:
+    """Tests for CI/CD status when repository has no workflows."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_no_workflows_shows_neutral_icon(self, github_repo: Repository) -> None:
+        """Display shows neutral icon when no workflow runs exist."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": []}),  # CI/CD API - no workflows
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "🔘"
+
+
+# ----------------------------------------------------------------------
+class TestCICDStatusSuccess:
+    """Tests for CI/CD status with successful workflows."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_all_success_shows_checkmark(self, github_repo: Repository) -> None:
+        """Display shows checkmark when all workflows succeed."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 2,
+                "name": "Deploy",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/deploy.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "✅"
+
+
+# ----------------------------------------------------------------------
+class TestCICDStatusFailure:
+    """Tests for CI/CD status with failed workflows."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_any_failure_shows_x_icon(self, github_repo: Repository) -> None:
+        """Display shows X icon when any workflow fails."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "failure",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "❌"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_failure_takes_precedence_over_success(self, github_repo: Repository) -> None:
+        """Failure icon shown when both success and failure exist."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 2,
+                "name": "Deploy",
+                "status": "completed",
+                "conclusion": "failure",
+                "path": ".github/workflows/deploy.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 3,
+                "name": "Lint",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/lint.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "❌"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_cancelled_shows_x_icon(self, github_repo: Repository) -> None:
+        """Display shows X icon when workflow is cancelled."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "cancelled",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "❌"
+
+
+# ----------------------------------------------------------------------
+class TestCICDStatusInProgress:
+    """Tests for CI/CD status with in-progress workflows."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_in_progress_shows_hourglass(self, github_repo: Repository) -> None:
+        """Display shows hourglass when workflows are in progress."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "in_progress",
+                "conclusion": None,
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "⏳"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_in_progress_takes_precedence_over_success(self, github_repo: Repository) -> None:
+        """In-progress icon shown when both success and in-progress exist."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 2,
+                "name": "Deploy",
+                "status": "in_progress",
+                "conclusion": None,
+                "path": ".github/workflows/deploy.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "⏳"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_failure_takes_precedence_over_in_progress(self, github_repo: Repository) -> None:
+        """Failure icon shown when both failure and in-progress exist."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "failure",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 2,
+                "name": "Deploy",
+                "status": "in_progress",
+                "conclusion": None,
+                "path": ".github/workflows/deploy.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert cicd_result.display_value == "❌"
+
+
+# ----------------------------------------------------------------------
+class TestCICDStatusAdditionalInfo:
+    """Tests for CI/CD status additional info content."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_additional_info_contains_actions_url(self, github_repo: Repository) -> None:
+        """Additional info contains the actions page URL."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert "https://github.com/owner/repo/actions" in cast(str, cicd_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_additional_info_shows_default_branch(self, github_repo: Repository) -> None:
+        """Additional info shows the default branch name."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        assert "Default Branch: main" in cast(str, cicd_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_additional_info_shows_workflow_names(self, github_repo: Repository) -> None:
+        """Additional info shows workflow names."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "Build and Test",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/build.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 2,
+                "name": "Deploy",
+                "status": "completed",
+                "conclusion": "failure",
+                "path": ".github/workflows/deploy.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        additional_info = cast(str, cicd_result.additional_info)
+        assert "Build and Test" in additional_info
+        assert "Deploy" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_additional_info_shows_summary_counts(self, github_repo: Repository) -> None:
+        """Additional info shows summary with counts."""
+
+        workflow_runs = [
+            {
+                "workflow_id": 1,
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/ci.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 2,
+                "name": "Deploy",
+                "status": "completed",
+                "conclusion": "success",
+                "path": ".github/workflows/deploy.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "workflow_id": 3,
+                "name": "Lint",
+                "status": "completed",
+                "conclusion": "failure",
+                "path": ".github/workflows/lint.yml",
+                "created_at": "2024-01-01T00:00:00Z",
+            },
+        ]
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ResultInfo)
+        additional_info = cast(str, cicd_result.additional_info)
+        assert "Successful:  2" in additional_info
+        assert "Failed:      1" in additional_info
+        assert "In Progress: 0" in additional_info
+
+
+# ----------------------------------------------------------------------
+class TestCICDStatusErrorHandling:
+    """Tests for CI/CD status error handling."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_api_error_returns_error_info(self, github_repo: Repository) -> None:
+        """API error returns ErrorInfo for CI/CD status."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({}, status=403),  # CI/CD API - Forbidden
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        cicd_result = next(r for r in results if r.key[1] == "cicd_status")
+
+        assert isinstance(cicd_result, ErrorInfo)
+        assert cicd_result.key == ("GitHubSource", "cicd_status")
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_other_results_not_affected_by_cicd_error(self, github_repo: Repository) -> None:
+        """Other results are returned even when CI/CD API fails."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response({}, status=500),  # CI/CD API - Server error
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        # Stars, forks, watchers, issues, PRs, security_alerts should all be ResultInfo
+        for key in ["stars", "forks", "watchers", "issues", "pull_requests", "security_alerts"]:
+            result = next(r for r in results if r.key[1] == key)
+            assert isinstance(result, ResultInfo)

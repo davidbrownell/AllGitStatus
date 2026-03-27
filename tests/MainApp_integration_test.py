@@ -17,6 +17,7 @@ from AllGitStatus import __version__
 from AllGitStatus.MainApp import (
     COLUMN_MAP,
     BranchColumn,
+    CICDStatusColumn,
     Column,
     ForksColumn,
     IssuesColumn,
@@ -655,7 +656,7 @@ class TestMainAppPopulateCell:
 
                 # Verify the cell was updated with error indicator
                 cell_value = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
-                assert "❌" in str(cell_value)
+                assert "💥" in str(cell_value)
 
                 # The additional_info_data should contain a Traceback
                 assert 0 in app._additional_info_data
@@ -958,6 +959,7 @@ class TestColumnDefinitions:
             IssuesColumn,
             PullRequestsColumn,
             SecurityAlertsColumn,
+            CICDStatusColumn,
         }
 
         assert unique_columns == expected_columns
