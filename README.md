@@ -25,29 +25,59 @@
 - [License](#license)
 
 ## Overview
-`AllGitStatus` is a [Text-based user interface](https://en.wikipedia.org/wiki/Text-based_user_interface) (TUI) that checks the git status for all repositories found under the specified directory. It can be used to quickly understand the status of multiple repositories stored under the same common ancestor. Additionally, it can be used to pull or push changes to/from a remote when changes are detected.
+`AllGitStatus` is a [Text-based user interface](https://en.wikipedia.org/wiki/Text-based_user_interface) (TUI) application that displays the git status of all repositories found under a specified directory. Perfect for developers managing multiple repositories who need a quick, comprehensive overview of their project states without navigating into each one individually.
 
-<img width="1608" height="970" alt="screenshot" src="https://github.com/user-attachments/assets/807d2857-e5a3-4680-968d-91f948d9d730" />
+<img width="1689" height="977" alt="screenshot" src="https://github.com/user-attachments/assets/78ea504e-de51-4840-b448-c1cc4d6c78f3" />
 
 [Screenshot of `AllGitStatus`]
 
-https://github.com/user-attachments/assets/14956748-39e8-489c-800b-feae67c5e579
+https://github.com/user-attachments/assets/596e3791-ce25-4872-8102-a004c22e5286
 
 [Demo of `AllGitStatus`]
 
+### Features
+
+#### Local Git Information:
+
+- Current branch name with detached HEAD detection
+- Local changes summary (staged ✅, unstaged 🟡, untracked ❓)
+- Stash count (🧺)
+- Remote sync status showing commits to push (🔼) or pull (🔽)
+
+
+#### GitHub Integration (when a GitHub PAT is provided):
+
+- Stars (⭐), forks (🍴), and watchers (👀) count
+- Open issues with labels and authors (🐛)
+- Open pull requests with draft status (🔀)
+- Security/Dependabot alerts with severity breakdown (🔒🔔⚠️🚨)
+- CI/CD workflow status (✅❌⏳)
+- Repository archived status (📦)
 
 ### How to use `AllGitStatus`
 
-`AllGitStatus` can be run directly via [uv](https://github.com/astral-sh/uv) or installed as a python package.
+Run directly with `uvx` (no installation required):
 
-#### Running with `uv`
+#### Check all repositories under the current directory
+`uvx AllGitStatus`
 
-Ensure that `uv` is installed and available on the path. Instructions on installing `uv` are available at https://docs.astral.sh/uv/#installation.
+#### Check repositories under a specific directory
+`uvx AllGitStatus /path/to/projects`
 
-| Command Line | Scenario |
-| --- | --- |
-| `uvx AllGitStatus` | To run using the current directory as the root of all git repositories. |
-| `uvx AllGitStatus <path to directory>` | To run using the specified directory as the root of all git repositories. |
+#### Enable GitHub integration with a Personal Access Token (NOT RECOMMENDED)
+`uvx AllGitStatus --pat ghp_your_token_here`
+
+#### The PAT can also be a path to a file containing the token (RECOMMENDED)
+`uvx AllGitStatus --pat ~/.github_pat`
+
+#### Or use an environment variable for the PAT
+```
+export ALLGITSTATUS_PAT=ghp_your_token_or_filename_here
+uvx AllGitStatus
+```
+
+#### Enable debug mode for troubleshooting
+`uvx AllGitStatus --debug`
 
 #### Running as a python package
 
@@ -61,6 +91,8 @@ Install `AllGitStatus` as a python package using the [instructions below](#insta
 <!-- Content below this delimiter will be copied to the generated README.md file. DO NOT REMOVE THIS COMMENT, as it will cause regeneration to fail. -->
 
 ## Installation
+
+Note that installation is not required when running `AllGitStatus` via `uvx`.
 
 | Installation Method | Command |
 | --- | --- |
