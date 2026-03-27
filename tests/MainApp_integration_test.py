@@ -16,6 +16,7 @@ from textual.widgets import DataTable, Footer, Header, Label, RichLog
 from AllGitStatus import __version__
 from AllGitStatus.MainApp import (
     COLUMN_MAP,
+    ArchivedColumn,
     BranchColumn,
     CICDStatusColumn,
     Column,
@@ -942,6 +943,22 @@ class TestColumnDefinitions:
         assert SecurityAlertsColumn.justify == "center"
 
     # ----------------------------------------------------------------------
+    def test_cicd_status_column_properties(self) -> None:
+        """CICDStatusColumn has correct properties."""
+
+        assert CICDStatusColumn.value == 11
+        assert CICDStatusColumn.name == "CI/CD"
+        assert CICDStatusColumn.justify == "center"
+
+    # ----------------------------------------------------------------------
+    def test_archived_column_properties(self) -> None:
+        """ArchivedColumn has correct properties."""
+
+        assert ArchivedColumn.value == 12
+        assert ArchivedColumn.name == "Archived"
+        assert ArchivedColumn.justify == "center"
+
+    # ----------------------------------------------------------------------
     def test_column_map_contains_all_columns(self) -> None:
         """COLUMN_MAP contains mappings for all column types."""
 
@@ -960,6 +977,7 @@ class TestColumnDefinitions:
             PullRequestsColumn,
             SecurityAlertsColumn,
             CICDStatusColumn,
+            ArchivedColumn,
         }
 
         assert unique_columns == expected_columns

@@ -194,7 +194,7 @@ class TestGitHubSourceQuery:
 
         # Verify all display values contain numeric counts (for ResultInfo items)
         for result in results:
-            if isinstance(result, ResultInfo) and result.key[1] != "cicd_status":
+            if isinstance(result, ResultInfo) and result.key[1] not in ["cicd_status", "archived"]:
                 number_part = result.display_value.split()[0]
                 assert number_part.isdigit(), f"Expected number in '{result.display_value}'"
 
