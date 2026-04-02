@@ -46,10 +46,10 @@ class TestRepository:
         repo = Repository(path=Path("/test/path"))
 
         with pytest.raises(AttributeError):
-            repo.path = Path("/another/path")  # type: ignore[misc]
+            repo.path = Path("/another/path")  # ty: ignore[invalid-assignment]
 
         with pytest.raises(AttributeError):
-            repo.remote_url = "https://example.com"  # type: ignore[misc]
+            repo.remote_url = "https://example.com"  # ty: ignore[invalid-assignment]
 
 
 # ----------------------------------------------------------------------

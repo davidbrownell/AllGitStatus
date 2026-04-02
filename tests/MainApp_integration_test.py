@@ -709,8 +709,8 @@ class TestMainAppPopulateCell:
                 assert 0 in app._state_data
                 assert RemoteColumn.value in app._state_data[0]
                 state_data = app._state_data[0][RemoteColumn.value]
-                assert state_data["has_local_changes"] is True  # type: ignore[index]
-                assert state_data["has_remote_changes"] is False  # type: ignore[index]
+                assert state_data["has_local_changes"] is True  # ty: ignore[not-subscriptable]
+                assert state_data["has_remote_changes"] is False  # ty: ignore[not-subscriptable]
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio

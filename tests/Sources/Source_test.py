@@ -44,7 +44,7 @@ class TestInfo:
         info = Info(repo=repo, key=("Test", "id"))
 
         with pytest.raises(AttributeError):
-            info.key = ("Other", "value")  # type: ignore[misc]
+            info.key = ("Other", "value")  # ty: ignore[invalid-assignment]
 
 
 # ----------------------------------------------------------------------
@@ -105,7 +105,7 @@ class TestResultInfo:
         result = ResultInfo(repo=repo, key=("Test", "id"), display_value="value")
 
         with pytest.raises(AttributeError):
-            result.display_value = "new value"  # type: ignore[misc]
+            result.display_value = "new value"  # ty: ignore[invalid-assignment]
 
     # ----------------------------------------------------------------------
     def test_state_data_is_keyword_only(self) -> None:
@@ -159,7 +159,7 @@ class TestErrorInfo:
         error_info = ErrorInfo(repo=repo, key=("Test", "id"), error=Exception())
 
         with pytest.raises(AttributeError):
-            error_info.error = ValueError("new error")  # type: ignore[misc]
+            error_info.error = ValueError("new error")  # ty: ignore[invalid-assignment]
 
     # ----------------------------------------------------------------------
     def test_preserves_exception_details(self) -> None:
