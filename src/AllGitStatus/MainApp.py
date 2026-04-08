@@ -254,7 +254,8 @@ class MainApp(App):
         self._additional_info_data.clear()
         self._state_data.clear()
         self._data_table.clear()
-        await self._OnSelectionChanged(repopulate_changes=False)
+
+        await self._OnSelectionChanged()
 
         # Get the repositories
 
@@ -287,6 +288,7 @@ class MainApp(App):
             )
 
         if repository_index == self._data_table.cursor_coordinate.row:
+            await self._OnSelectionChanged()
             self._RefreshBindings()
 
         # Create the repo name
@@ -314,22 +316,43 @@ class MainApp(App):
         async def LoadCells() -> None:
             assert self._github_session is not None
 
-            for source in [
+            sources = [
                 LocalGitSource(),
                 GitHubSource(self._github_session),
-            ]:
+            ]
+
+            # Set all of the column values to pending
+            for source in sources:
+                if not source.Applies(repository):
+                    continue
+
+                for column_key, column in COLUMN_MAP.items():
+                    if not column_key[0] and not column_key[1]:
+                        continue
+
+                    if column_key[0] != source.__class__.__name__:
+                        continue
+
+                    self._data_table.update_cell_at(
+                        Coordinate(repository_index, column.value),
+                        Text("⏳", justify=column.justify),  # ty: ignore[invalid-argument-type]
+                        update_width=True,
+                    )
+
+            # Get the actual values
+            for source in sources:
                 if not source.Applies(repository):
                     continue
 
                 async for info in source.Query(repository):
-                    self._PopulateCell(repository_index, info)
+                    await self._PopulateCell(repository_index, info)
 
         # ----------------------------------------------------------------------
 
         self.run_worker(LoadCells())
 
     # ----------------------------------------------------------------------
-    def _PopulateCell(self, repository_index: int, info: ResultInfo | ErrorInfo) -> None:
+    async def _PopulateCell(self, repository_index: int, info: ResultInfo | ErrorInfo) -> None:
         column = COLUMN_MAP[info.key]
 
         if isinstance(info, ErrorInfo):
@@ -361,13 +384,13 @@ class MainApp(App):
 
         self._additional_info_data.setdefault(repository_index, {})[column.value] = additional_info
 
+        if self._data_table.cursor_row == repository_index and self._data_table.cursor_column == column.value:
+            await self._OnSelectionChanged()
+
     # ----------------------------------------------------------------------
-    async def _OnSelectionChanged(self, *, repopulate_changes: bool = True) -> None:
+    async def _OnSelectionChanged(self) -> None:
         self._additional_info.clear()
         self._RefreshBindings()
-
-        if not repopulate_changes:
-            return
 
         row_index = self._data_table.cursor_coordinate.row
         col_index = self._data_table.cursor_coordinate.column
@@ -376,6 +399,7 @@ class MainApp(App):
 
         if additional_info:
             self._additional_info.write(additional_info)
+            self._additional_info.scroll_home()
 
     # ----------------------------------------------------------------------
     def _RefreshBindings(self) -> None:

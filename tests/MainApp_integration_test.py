@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
+from rich.text import Text
 from textual.coordinate import Coordinate
 from textual.widgets import DataTable, Footer, Header, Label, RichLog
 
@@ -652,7 +653,7 @@ class TestMainAppPopulateCell:
                     error=ValueError("Test error"),
                 )
 
-                app._PopulateCell(0, error_info)
+                await app._PopulateCell(0, error_info)
                 await pilot.pause()
 
                 # Verify the cell was updated with error indicator
@@ -692,13 +693,13 @@ class TestMainAppPopulateCell:
                     state_data={"has_local_changes": True, "has_remote_changes": False},
                 )
 
-                app._PopulateCell(0, result_info)
+                await app._PopulateCell(0, result_info)
                 await pilot.pause()
 
                 # Verify the cell was populated with the display value
                 cell_value = app._data_table.get_cell_at(Coordinate(0, RemoteColumn.value))
-                assert "0 🔼" in str(cell_value)
-                assert "0 🔽" in str(cell_value)
+                assert "0 🔼" in str(cell_value), (cell_value, result_info.additional_info)
+                assert "0 🔽" in str(cell_value), (cell_value, result_info.additional_info)
 
                 # Verify additional_info was stored
                 assert 0 in app._additional_info_data
@@ -743,7 +744,7 @@ class TestMainAppPopulateCell:
                         error=e,
                     )
 
-                app._PopulateCell(0, error_info)
+                await app._PopulateCell(0, error_info)
                 await pilot.pause()
 
                 # Verify the cell was updated
@@ -1100,3 +1101,453 @@ class TestMainAppDebugMode:
 
         app_with_debug = MainApp(working_dir=working_dir, github_pat=None, debug=True)
         assert app_with_debug.title == "AllGitStatus [DEBUG]"
+
+
+# ----------------------------------------------------------------------
+class TestPendingIconDisplay:
+    """Tests for pending icon (⏳) display before column data is loaded."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_appears_for_local_git_source_columns(self, working_dir: Path) -> None:
+        """Pending icon appears in LocalGitSource columns before data is loaded."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        # Create an event to control when query completes
+        query_started = asyncio.Event()
+        query_can_continue = asyncio.Event()
+
+        async def slow_query(repo):
+            query_started.set()
+            await query_can_continue.wait()
+            # Yield a result after waiting
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "current_branch"),
+                display_value="main",
+                additional_info="Branch: main",
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=slow_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                # Wait for repositories to load and pending icons to be set
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                # Wait for the query to start (indicating pending icons have been set)
+                try:
+                    await asyncio.wait_for(query_started.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    pass  # Query may not have started yet, but pending icons should still be set
+
+                # Check that LocalGitSource columns have the pending icon
+                branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
+                local_cell = app._data_table.get_cell_at(Coordinate(0, LocalColumn.value))
+                stashes_cell = app._data_table.get_cell_at(Coordinate(0, StashesColumn.value))
+                remote_cell = app._data_table.get_cell_at(Coordinate(0, RemoteColumn.value))
+
+                # Verify at least one column shows the pending icon
+                # The pending icon is ⏳
+                cells_content = [str(branch_cell), str(local_cell), str(stashes_cell), str(remote_cell)]
+                has_pending = any("⏳" in cell for cell in cells_content)
+                assert has_pending, f"Expected pending icon in at least one cell, got: {cells_content}"
+
+                # Allow the test to complete
+                query_can_continue.set()
+                await pilot.pause()
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_appears_for_github_source_columns(self, working_dir: Path) -> None:
+        """Pending icon appears in GitHubSource columns for GitHub-linked repos."""
+
+        # Create a repository with GitHub remote (so GitHubSource.Applies returns True)
+        repos = [create_mock_repository(working_dir / "repo1", "https://github.com/testowner/repo1.git")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        query_started = asyncio.Event()
+        query_can_continue = asyncio.Event()
+
+        async def slow_local_query(repo):
+            # Return quickly for local source
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "current_branch"),
+                display_value="main",
+                additional_info="Branch: main",
+            )
+
+        async def slow_github_query(repo):
+            query_started.set()
+            await query_can_continue.wait()
+            yield ResultInfo(
+                repo=repo,
+                key=("GitHubSource", "stars"),
+                display_value="⭐ 42",
+                additional_info="42 stars",
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=slow_local_query),
+            patch("AllGitStatus.MainApp.GitHubSource.Query", side_effect=slow_github_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat="test_pat")
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                # Wait for GitHub query to start
+                try:
+                    await asyncio.wait_for(query_started.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    pass
+
+                # GitHub columns should have pending icons
+                stars_cell = app._data_table.get_cell_at(Coordinate(0, StarsColumn.value))
+                forks_cell = app._data_table.get_cell_at(Coordinate(0, ForksColumn.value))
+
+                # Verify GitHub columns have pending icons
+                assert "⏳" in str(stars_cell) or "⏳" in str(forks_cell), (
+                    f"Expected pending icon in GitHub columns, got stars={stars_cell}, forks={forks_cell}"
+                )
+
+                # Allow completion
+                query_can_continue.set()
+                await pilot.pause()
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_not_shown_for_non_github_repos(self, working_dir: Path) -> None:
+        """GitHub columns don't show pending icon for repos without GitHub remote."""
+
+        # Create a repository WITHOUT GitHub remote
+        repos = [create_mock_repository(working_dir / "repo1")]  # No remote_url
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        async def mock_local_query(repo):
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "current_branch"),
+                display_value="main",
+                additional_info="Branch: main",
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=mock_local_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.2)
+                await pilot.pause()
+
+                # GitHub columns should be empty (not pending) since GitHubSource doesn't apply
+                stars_cell = app._data_table.get_cell_at(Coordinate(0, StarsColumn.value))
+                forks_cell = app._data_table.get_cell_at(Coordinate(0, ForksColumn.value))
+
+                # These cells should be empty strings, not pending icons
+                assert str(stars_cell) == ""
+                assert str(forks_cell) == ""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_replaced_with_result_value(self, working_dir: Path) -> None:
+        """Pending icon is replaced with actual value when data arrives."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                # Manually populate a cell to verify the mechanism
+                result_info = ResultInfo(
+                    repo=repos[0],
+                    key=("LocalGitSource", "current_branch"),
+                    display_value="main",
+                    additional_info="Branch: main",
+                )
+
+                await app._PopulateCell(0, result_info)
+                await pilot.pause()
+
+                # The cell should now show "main", not the pending icon
+                branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
+                assert "main" in str(branch_cell)
+                assert "⏳" not in str(branch_cell)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_replaced_with_error_indicator(self, working_dir: Path) -> None:
+        """Pending icon is replaced with error indicator (💥) when error occurs."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                # Manually populate a cell with an error
+                error_info = ErrorInfo(
+                    repo=repos[0],
+                    key=("LocalGitSource", "current_branch"),
+                    error=ValueError("Test error"),
+                )
+
+                await app._PopulateCell(0, error_info)
+                await pilot.pause()
+
+                # The cell should now show the error indicator, not pending icon
+                branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
+                assert "💥" in str(branch_cell)
+                assert "⏳" not in str(branch_cell)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_uses_column_justify(self, working_dir: Path) -> None:
+        """Pending icon respects the column's justify setting."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        # We need to capture what's passed to update_cell_at
+        captured_texts: list[tuple[Coordinate, Text]] = []
+        original_update_cell_at = DataTable.update_cell_at
+
+        def capture_update_cell_at(self, coordinate, value, **kwargs):
+            if isinstance(value, Text):
+                captured_texts.append((coordinate, value))
+            return original_update_cell_at(self, coordinate, value, **kwargs)
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch.object(DataTable, "update_cell_at", capture_update_cell_at),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.2)
+                await pilot.pause()
+
+                # Find pending icon updates for different columns
+                pending_updates = [(coord, text) for coord, text in captured_texts if str(text) == "⏳"]
+
+                # Verify that pending icons were set with proper justify
+                for coord, text in pending_updates:
+                    column = next(
+                        (c for c in COLUMN_MAP.values() if c.value == coord.column),
+                        None,
+                    )
+                    if column:
+                        assert text.justify == column.justify
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_all_local_source_columns_get_pending_icon(self, working_dir: Path) -> None:
+        """All LocalGitSource columns receive pending icon during reset."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        # Track which columns received pending icons
+        pending_columns: set[int] = set()
+        original_update_cell_at = DataTable.update_cell_at
+
+        def track_pending_updates(self, coordinate, value, **kwargs):
+            if isinstance(value, Text) and str(value) == "⏳":
+                pending_columns.add(coordinate.column)
+            return original_update_cell_at(self, coordinate, value, **kwargs)
+
+        # Block the query from completing so we can verify pending state
+        query_started = asyncio.Event()
+
+        async def blocking_query(_repo):
+            query_started.set()
+            # Never yield - just wait forever
+            await asyncio.Event().wait()
+            yield  # Make it a generator
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch.object(DataTable, "update_cell_at", track_pending_updates),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=blocking_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                # Wait for query to start (means pending icons were set)
+                try:
+                    await asyncio.wait_for(query_started.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    pass
+
+                # Verify all LocalGitSource columns received pending icons
+                local_columns = {
+                    BranchColumn.value,
+                    LocalColumn.value,
+                    StashesColumn.value,
+                    RemoteColumn.value,
+                }
+                assert local_columns.issubset(pending_columns), (
+                    f"Expected LocalGitSource columns {local_columns} to have pending icons, "
+                    f"but only got {pending_columns}"
+                )
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_all_github_source_columns_get_pending_icon(self, working_dir: Path) -> None:
+        """All GitHubSource columns receive pending icon for GitHub repos."""
+
+        # Create a repository WITH GitHub remote
+        repos = [create_mock_repository(working_dir / "repo1", "https://github.com/testowner/repo1.git")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        # Track which columns received pending icons
+        pending_columns: set[int] = set()
+        original_update_cell_at = DataTable.update_cell_at
+
+        def track_pending_updates(self, coordinate, value, **kwargs):
+            if isinstance(value, Text) and str(value) == "⏳":
+                pending_columns.add(coordinate.column)
+            return original_update_cell_at(self, coordinate, value, **kwargs)
+
+        # Block queries from completing
+        async def blocking_local_query(_repo):
+            await asyncio.Event().wait()
+            yield
+
+        async def blocking_github_query(_repo):
+            await asyncio.Event().wait()
+            yield
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch.object(DataTable, "update_cell_at", track_pending_updates),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=blocking_local_query),
+            patch("AllGitStatus.MainApp.GitHubSource.Query", side_effect=blocking_github_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat="test_pat")
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.2)
+                await pilot.pause()
+
+                # Verify all GitHubSource columns received pending icons
+                github_columns = {
+                    StarsColumn.value,
+                    ForksColumn.value,
+                    WatchersColumn.value,
+                    IssuesColumn.value,
+                    PullRequestsColumn.value,
+                    SecurityAlertsColumn.value,
+                    CICDStatusColumn.value,
+                    ArchivedColumn.value,
+                }
+                assert github_columns.issubset(pending_columns), (
+                    f"Expected GitHubSource columns {github_columns} to have pending icons, "
+                    f"but only got {pending_columns}"
+                )
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_pending_icon_on_refresh_selected(self, working_dir: Path) -> None:
+        """Pending icon appears when refreshing a single repository."""
+
+        repos = [
+            create_mock_repository(working_dir / "repo1"),
+            create_mock_repository(working_dir / "repo2"),
+        ]
+
+        async def mock_enum(_wd):
+            for repo in repos:
+                yield repo
+
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                # Wait for initial load
+                await pilot.pause()
+                await asyncio.sleep(0.2)
+                await pilot.pause()
+
+                # Verify repos loaded
+                assert app._repositories is not None
+                assert len(app._repositories) == 2
+
+                # Track pending icons after refresh
+                pending_updates: list[Coordinate] = []
+                original_update_cell_at = DataTable.update_cell_at
+
+                def track_refresh_pending(self, coordinate, value, **kwargs):  # noqa: ARG001
+                    if isinstance(value, Text) and str(value) == "⏳":
+                        pending_updates.append(coordinate)
+                    return original_update_cell_at(self, coordinate, value, **kwargs)
+
+                with patch.object(DataTable, "update_cell_at", track_refresh_pending):
+                    # Press 'r' to refresh selected (first row)
+                    await pilot.press("r")
+                    await pilot.pause()
+                    await asyncio.sleep(0.1)
+                    await pilot.pause()
+
+                # Verify pending icons were set for row 0 (the selected row)
+                row_0_pending = [c for c in pending_updates if c.row == 0]
+                assert len(row_0_pending) > 0, "Expected pending icons for refreshed row"
+
+                # Verify no pending icons for row 1 (not refreshed)
+                row_1_pending = [c for c in pending_updates if c.row == 1]
+                assert len(row_1_pending) == 0, "Should not have pending icons for non-refreshed row"

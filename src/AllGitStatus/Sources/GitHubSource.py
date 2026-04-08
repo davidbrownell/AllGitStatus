@@ -3,6 +3,7 @@ import re
 import textwrap
 
 from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, UTC
 
 import aiohttp
 
@@ -131,6 +132,8 @@ class GitHubSource(Source):
         repo: Repository,
         github_url: str,
     ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
+        key = (self.__class__.__name__, "issues")
+
         try:
             label_counts: dict[str, int] = {}
             total_count = 0
@@ -160,7 +163,7 @@ class GitHubSource(Source):
 
                 label_str = f" [{', '.join(issue_labels)}]" if issue_labels else ""
 
-                issue_data.append(f"• #{issue_number}{label_str} {issue_title} (by {issue_author})")
+                issue_data.append(f"- #{issue_number}{label_str} {issue_title} (by {issue_author})")
 
             # Build additional info with issue details
             additional_info_lines = [
@@ -182,17 +185,13 @@ class GitHubSource(Source):
 
             yield ResultInfo(
                 repo,
-                (self.__class__.__name__, "issues"),
+                key,
                 f"{total_count:5} 🐛",
                 "\n".join(additional_info_lines),
             )
 
         except Exception as ex:
-            yield ErrorInfo(
-                repo,
-                (self.__class__.__name__, "issues"),
-                ex,
-            )
+            yield ErrorInfo(repo, key, ex)
 
     # ----------------------------------------------------------------------
     async def _GeneratePullRequestInfo(
@@ -200,6 +199,8 @@ class GitHubSource(Source):
         repo: Repository,
         github_url: str,
     ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
+        key = (self.__class__.__name__, "pull_requests")
+
         try:
             total_count = 0
             pr_data: list[str] = []
@@ -216,7 +217,7 @@ class GitHubSource(Source):
 
                 draft_indicator = "[DRAFT] " if pr_draft else ""
 
-                pr_data.append(f"• #{pr_number} {draft_indicator}{pr_title} (by {pr_author})")
+                pr_data.append(f"- #{pr_number} {draft_indicator}{pr_title} (by {pr_author})")
 
             additional_info_lines = [
                 f"Pull Requests: {github_url}/pulls",
@@ -229,17 +230,13 @@ class GitHubSource(Source):
 
             yield ResultInfo(
                 repo,
-                (self.__class__.__name__, "pull_requests"),
+                key,
                 f"{total_count:5} 🔀",
                 "\n".join(additional_info_lines),
             )
 
         except Exception as ex:
-            yield ErrorInfo(
-                repo,
-                (self.__class__.__name__, "pull_requests"),
-                ex,
-            )
+            yield ErrorInfo(repo, key, ex)
 
     # ----------------------------------------------------------------------
     async def _GenerateSecurityAlertInfo(
@@ -247,6 +244,8 @@ class GitHubSource(Source):
         repo: Repository,
         github_url: str,
     ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
+        key = (self.__class__.__name__, "security_alerts")
+
         try:
             severity_counts: dict[str, int] = {
                 "critical": 0,
@@ -271,7 +270,7 @@ class GitHubSource(Source):
                 package = alert.get("security_vulnerability", {}).get("package", {})
 
                 alert_data.append(
-                    f"• [{advisory.get('severity', 'unknown').upper()}] {package.get('name', 'unknown')}: {advisory.get('summary', 'No summary')}"
+                    f"- [{advisory.get('severity', 'unknown').upper()}] {package.get('name', 'unknown')}: {advisory.get('summary', 'No summary')}"
                 )
 
             # Build display value with icon based on severity
@@ -303,17 +302,13 @@ class GitHubSource(Source):
 
             yield ResultInfo(
                 repo,
-                (self.__class__.__name__, "security_alerts"),
+                key,
                 display_value,
                 "\n".join(additional_info_lines),
             )
 
         except Exception as ex:
-            yield ErrorInfo(
-                repo,
-                (self.__class__.__name__, "security_alerts"),
-                ex,
-            )
+            yield ErrorInfo(repo, key, ex)
 
     # ----------------------------------------------------------------------
     async def _GenerateCICDInfo(
@@ -322,12 +317,20 @@ class GitHubSource(Source):
         github_url: str,
         default_branch: str,
     ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
-        info_key = (self.__class__.__name__, "cicd_status")
+        key = (self.__class__.__name__, "cicd_status")
 
         try:
-            url = f"https://api.github.com/repos/{repo.github_owner}/{repo.github_repo}/actions/runs?branch={default_branch}&per_page=100"
+            prev_month = datetime.now(tz=UTC) - timedelta(days=30)
 
-            async with self._session.get(url) as response:
+            url = f"https://api.github.com/repos/{repo.github_owner}/{repo.github_repo}/actions/runs"
+
+            params = {
+                "branch": default_branch,
+                "per_page": 100,
+                "created": f">={prev_month.date()}",
+            }
+
+            async with self._session.get(url, params=params) as response:
                 response.raise_for_status()
                 result = await response.json()
 
@@ -336,17 +339,18 @@ class GitHubSource(Source):
                 if not workflow_runs:
                     yield ResultInfo(
                         repo,
-                        info_key,
-                        "🔘",
+                        key,
+                        "-",
                         textwrap.dedent(
                             """\
                                 CI/CD Status: {github_url}/actions
 
-                                No workflow runs found for branch '{default_branch}'
+                                No workflow runs found for branch '{default_branch}' since '{prev_month}'.
                                 """,
                         ).format(
                             github_url=github_url,
                             default_branch=default_branch,
+                            prev_month=prev_month.date(),
                         ),
                     )
                     return
@@ -386,7 +390,7 @@ class GitHubSource(Source):
                     else:
                         status_label = conclusion or status or "UNKNOWN"
 
-                    run_details.append(f"• [{status_label}] {run['created_at']} {run['path']}: {run['name']}")
+                    run_details.append(f"- [{status_label}] {run['created_at']} {run['path']}: {run['name']}")
 
                 # Determine display icon based on priority: failure > in_progress > success
                 if status_counts["failure"] > 0:
@@ -415,25 +419,21 @@ class GitHubSource(Source):
 
                 yield ResultInfo(
                     repo,
-                    info_key,
+                    key,
                     display_icon,
                     "\n".join(additional_info_lines),
                 )
 
         except Exception as ex:
-            yield ErrorInfo(
-                repo,
-                info_key,
-                ex,
-            )
+            yield ErrorInfo(repo, key, ex)
 
     # ----------------------------------------------------------------------
-    async def _GeneratePaginatedResults(self, raw_url: str) -> AsyncGenerator[dict]:
-        url: str | None = f"{raw_url}?state=open&per_page=100"
+    async def _GeneratePaginatedResults(self, url: str) -> AsyncGenerator[dict]:
+        params = {"state": "open", "per_page": 100}
         next_page_regex = re.compile(r"<([^>]+)>")
 
         while url:
-            async with self._session.get(url) as response:
+            async with self._session.get(url, params=params) as response:
                 response.raise_for_status()
 
                 results = await response.json()
@@ -441,7 +441,9 @@ class GitHubSource(Source):
                 for result in results:
                     yield result
 
-                url = None
+                url: str | None = None
+                params = None
+
                 link_header = response.headers.get("Link", "")
 
                 for link in link_header.split(","):
