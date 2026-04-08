@@ -2134,7 +2134,7 @@ class TestCICDStatusNoWorkflows:
         cicd_result = next(r for r in results if r.key[1] == "cicd_status")
 
         assert isinstance(cicd_result, ResultInfo)
-        assert cicd_result.display_value == "🔘"
+        assert cicd_result.display_value == "-"
 
 
 # ----------------------------------------------------------------------
