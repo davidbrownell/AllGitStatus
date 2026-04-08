@@ -4,6 +4,7 @@ import textwrap
 
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, UTC
+from http import HTTPStatus
 
 import aiohttp
 
@@ -60,6 +61,9 @@ class GitHubSource(Source):
             yield info
 
         async for info in self._GenerateSecurityAlertInfo(repo, github_url):
+            yield info
+
+        async for info in self._GenerateReleaseInfo(repo, github_url):
             yield info
 
         default_branch = persisted_info.get("default_branch")
@@ -421,6 +425,107 @@ class GitHubSource(Source):
                     repo,
                     key,
                     display_icon,
+                    "\n".join(additional_info_lines),
+                )
+
+        except Exception as ex:
+            yield ErrorInfo(repo, key, ex)
+
+    # ----------------------------------------------------------------------
+    async def _GenerateReleaseInfo(
+        self,
+        repo: Repository,
+        github_url: str,
+    ) -> AsyncGenerator[ResultInfo | ErrorInfo]:
+        key = (self.__class__.__name__, "release")
+
+        try:
+            url = f"https://api.github.com/repos/{repo.github_owner}/{repo.github_repo}/releases/latest"
+
+            async with self._session.get(url) as response:
+                if response.status == HTTPStatus.NOT_FOUND:
+                    # No releases found
+                    yield ResultInfo(
+                        repo,
+                        key,
+                        "-",
+                        textwrap.dedent(
+                            """\
+                            Releases: {github_url}/releases
+
+                            No releases found.
+                            """,
+                        ).format(github_url=github_url),
+                    )
+                    return
+
+                response.raise_for_status()
+                release = await response.json()
+
+                tag_name = release.get("tag_name", "unknown")
+                release_name = release.get("name", tag_name)
+                published_at = release.get("published_at", "")
+                is_prerelease = release.get("prerelease", False)
+                is_draft = release.get("draft", False)
+                html_url = release.get("html_url", f"{github_url}/releases/latest")
+                author = release.get("author", {}).get("login", "unknown")
+
+                # Format the published date
+                if published_at:
+                    try:
+                        pub_date = datetime.fromisoformat(published_at)
+                        date_str = pub_date.strftime("%Y-%m-%d")
+                    except ValueError:
+                        max_date_length = 10
+
+                        date_str = (
+                            published_at[:max_date_length]
+                            if len(published_at) >= max_date_length
+                            else published_at
+                        )
+                else:
+                    date_str = "unknown"
+
+                # Build display value
+                if is_draft:
+                    display_value = f"{tag_name} 📝"
+                elif is_prerelease:
+                    display_value = f"{tag_name} 🚧"
+                else:
+                    display_value = f"{tag_name} 🏷️"
+
+                # Build additional info
+                additional_info_lines = [
+                    f"Releases: {github_url}/releases",
+                    "",
+                    "Latest Release:",
+                    f"  Tag:       {tag_name}",
+                    f"  Name:      {release_name}",
+                    f"  Published: {date_str}",
+                    f"  Author:    {author}",
+                    f"  URL:       {html_url}",
+                ]
+
+                if is_draft:
+                    additional_info_lines.append("  Status:    Draft")
+                elif is_prerelease:
+                    additional_info_lines.append("  Status:    Pre-release")
+                else:
+                    additional_info_lines.append("  Status:    Stable")
+
+                # Add asset information if available
+                if assets := release.get("assets", []):
+                    additional_info_lines.extend(["", "Assets:"])
+
+                    for asset in assets:
+                        asset_name = asset.get("name", "unknown")
+                        download_count = asset.get("download_count", 0)
+                        additional_info_lines.append(f"  - {asset_name} ({download_count} downloads)")
+
+                yield ResultInfo(
+                    repo,
+                    key,
+                    display_value,
                     "\n".join(additional_info_lines),
                 )
 

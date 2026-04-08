@@ -27,6 +27,7 @@ from AllGitStatus.MainApp import (
     MainApp,
     NameColumn,
     PullRequestsColumn,
+    ReleaseColumn,
     RemoteColumn,
     SecurityAlertsColumn,
     StarsColumn,
@@ -955,7 +956,7 @@ class TestColumnDefinitions:
     def test_archived_column_properties(self) -> None:
         """ArchivedColumn has correct properties."""
 
-        assert ArchivedColumn.value == 12
+        assert ArchivedColumn.value == 13
         assert ArchivedColumn.name == "Archived"
         assert ArchivedColumn.justify == "center"
 
@@ -978,6 +979,7 @@ class TestColumnDefinitions:
             PullRequestsColumn,
             SecurityAlertsColumn,
             CICDStatusColumn,
+            ReleaseColumn,
             ArchivedColumn,
         }
 
