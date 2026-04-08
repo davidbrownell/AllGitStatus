@@ -1974,6 +1974,7 @@ class TestSecurityAlertsErrorHandling:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response({}, status=403),  # Security alerts API error
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": []}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -1981,12 +1982,12 @@ class TestSecurityAlertsErrorHandling:
 
         results = [info async for info in source.Query(github_repo)]
 
-        # Should have 8 results total (stars, forks, watchers, issues, PRs, security_alerts error, cicd_status, archived)
-        assert len(results) == 8
+        # Should have 9 results total (stars, forks, watchers, issues, PRs, security_alerts error, release, cicd_status, archived)
+        assert len(results) == 9
 
-        # Stars, forks, issues, watchers, PRs, cicd_status, archived should all be ResultInfo
+        # Stars, forks, issues, watchers, PRs, release, cicd_status, archived should all be ResultInfo
         non_security_results = [r for r in results if r.key[1] != "security_alerts"]
-        assert len(non_security_results) == 7
+        assert len(non_security_results) == 8
         assert all(isinstance(r, ResultInfo) for r in non_security_results)
 
 
@@ -2124,6 +2125,7 @@ class TestCICDStatusNoWorkflows:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": []}),  # CI/CD API - no workflows
         ]
         session = create_mock_session(responses)
@@ -2177,6 +2179,7 @@ class TestCICDStatusSuccess:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2222,6 +2225,7 @@ class TestCICDStatusFailure:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2278,6 +2282,7 @@ class TestCICDStatusFailure:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2318,6 +2323,7 @@ class TestCICDStatusFailure:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2363,6 +2369,7 @@ class TestCICDStatusInProgress:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2411,6 +2418,7 @@ class TestCICDStatusInProgress:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2459,6 +2467,7 @@ class TestCICDStatusInProgress:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2504,6 +2513,7 @@ class TestCICDStatusAdditionalInfo:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2544,6 +2554,7 @@ class TestCICDStatusAdditionalInfo:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2592,6 +2603,7 @@ class TestCICDStatusAdditionalInfo:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2650,6 +2662,7 @@ class TestCICDStatusAdditionalInfo:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({"workflow_runs": workflow_runs}),  # CI/CD API
         ]
         session = create_mock_session(responses)
@@ -2687,6 +2700,7 @@ class TestCICDStatusErrorHandling:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({}, status=403),  # CI/CD API - Forbidden
         ]
         session = create_mock_session(responses)
@@ -2716,6 +2730,7 @@ class TestCICDStatusErrorHandling:
             create_mock_response([]),  # Issues API
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({"tag_name": "v1.0.0"}),  # Release API
             create_mock_response({}, status=500),  # CI/CD API - Server error
         ]
         session = create_mock_session(responses)
@@ -2723,7 +2738,299 @@ class TestCICDStatusErrorHandling:
 
         results = [info async for info in source.Query(github_repo)]
 
-        # Stars, forks, watchers, issues, PRs, security_alerts should all be ResultInfo
-        for key in ["stars", "forks", "watchers", "issues", "pull_requests", "security_alerts"]:
+        # Stars, forks, watchers, issues, PRs, security_alerts, release should all be ResultInfo
+        for key in ["stars", "forks", "watchers", "issues", "pull_requests", "security_alerts", "release"]:
             result = next(r for r in results if r.key[1] == key)
             assert isinstance(result, ResultInfo)
+
+
+# ----------------------------------------------------------------------
+class TestRelease:
+    """Tests for GitHub release information."""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_release_result_has_correct_key(self, github_repo: Repository) -> None:
+        """Release result has the correct key structure."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response(
+                {
+                    "tag_name": "v1.2.3",
+                    "name": "Release 1.2.3",
+                    "published_at": "2024-01-15T10:00:00Z",
+                    "prerelease": False,
+                    "draft": False,
+                    "html_url": "https://github.com/owner/repo/releases/tag/v1.2.3",
+                    "author": {"login": "testuser"},
+                    "assets": [],
+                }
+            ),  # Release API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        assert release_result.key == ("GitHubSource", "release")
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_release_display_value_format(self, github_repo: Repository) -> None:
+        """Release display value contains tag name and label icon."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response(
+                {
+                    "tag_name": "v2.0.0",
+                    "name": "Version 2.0.0",
+                    "published_at": "2024-06-01T12:00:00Z",
+                    "prerelease": False,
+                    "draft": False,
+                    "html_url": "https://github.com/owner/repo/releases/tag/v2.0.0",
+                    "author": {"login": "releasebot"},
+                }
+            ),  # Release API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        assert "v2.0.0" in release_result.display_value
+        assert "🏷️" in release_result.display_value
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_prerelease_shows_construction_icon(self, github_repo: Repository) -> None:
+        """Pre-release display value shows construction icon."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response(
+                {
+                    "tag_name": "v3.0.0-beta.1",
+                    "name": "Beta 1",
+                    "published_at": "2024-07-01T12:00:00Z",
+                    "prerelease": True,
+                    "draft": False,
+                    "html_url": "https://github.com/owner/repo/releases/tag/v3.0.0-beta.1",
+                    "author": {"login": "testuser"},
+                }
+            ),  # Release API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        assert "v3.0.0-beta.1" in release_result.display_value
+        assert "🚧" in release_result.display_value
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_draft_shows_memo_icon(self, github_repo: Repository) -> None:
+        """Draft release display value shows memo icon."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response(
+                {
+                    "tag_name": "v4.0.0",
+                    "name": "Upcoming Release",
+                    "published_at": None,
+                    "prerelease": False,
+                    "draft": True,
+                    "html_url": "https://github.com/owner/repo/releases/tag/v4.0.0",
+                    "author": {"login": "testuser"},
+                }
+            ),  # Release API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        assert "v4.0.0" in release_result.display_value
+        assert "📝" in release_result.display_value
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_no_releases_shows_dash(self, github_repo: Repository) -> None:
+        """No releases returns dash display value."""
+
+        # Create a special mock for 404 that doesn't raise (so we can check status first)
+        release_404_response = MagicMock()
+        release_404_response.status = 404
+        release_404_response.json = AsyncMock(return_value={})
+        release_404_response.raise_for_status = MagicMock()  # Doesn't raise for 404 check
+        release_404_response.headers = {}
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            release_404_response,  # Release API - 404 Not Found (handled gracefully)
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        assert release_result.display_value == "-"
+        assert "No releases found" in cast(str, release_result.additional_info)
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_release_additional_info_contains_details(self, github_repo: Repository) -> None:
+        """Release additional info contains release details."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response(
+                {
+                    "tag_name": "v1.0.0",
+                    "name": "First Release",
+                    "published_at": "2024-03-15T10:30:00Z",
+                    "prerelease": False,
+                    "draft": False,
+                    "html_url": "https://github.com/owner/repo/releases/tag/v1.0.0",
+                    "author": {"login": "releasemaker"},
+                }
+            ),  # Release API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        additional_info = cast(str, release_result.additional_info)
+        assert "Tag:       v1.0.0" in additional_info
+        assert "Name:      First Release" in additional_info
+        assert "Published: 2024-03-15" in additional_info
+        assert "Author:    releasemaker" in additional_info
+        assert "Status:    Stable" in additional_info
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_release_with_assets_shows_downloads(self, github_repo: Repository) -> None:
+        """Release with assets shows download counts."""
+
+        responses = [
+            create_mock_response(
+                {
+                    "stargazers_count": 10,
+                    "forks_count": 5,
+                    "subscribers_count": 3,
+                    "default_branch": "main",
+                }
+            ),
+            create_mock_response([]),  # Issues API
+            create_mock_response([]),  # PRs API
+            create_mock_response([]),  # Security alerts API
+            create_mock_response(
+                {
+                    "tag_name": "v1.5.0",
+                    "name": "Release with Assets",
+                    "published_at": "2024-05-01T08:00:00Z",
+                    "prerelease": False,
+                    "draft": False,
+                    "html_url": "https://github.com/owner/repo/releases/tag/v1.5.0",
+                    "author": {"login": "testuser"},
+                    "assets": [
+                        {"name": "app-linux.tar.gz", "download_count": 1500},
+                        {"name": "app-windows.zip", "download_count": 2300},
+                    ],
+                }
+            ),  # Release API
+        ]
+        session = create_mock_session(responses)
+        source = GitHubSource(session)
+
+        results = [info async for info in source.Query(github_repo)]
+
+        release_result = next(r for r in results if r.key[1] == "release")
+
+        assert isinstance(release_result, ResultInfo)
+        additional_info = cast(str, release_result.additional_info)
+        assert "Assets:" in additional_info
+        assert "app-linux.tar.gz (1500 downloads)" in additional_info
+        assert "app-windows.zip (2300 downloads)" in additional_info
