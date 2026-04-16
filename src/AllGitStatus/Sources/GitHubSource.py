@@ -124,11 +124,14 @@ class GitHubSource(Source):
                 )
 
         except Exception as ex:
-            yield ErrorInfo(
-                repo,
-                (self.__class__.__name__, "stars"),
-                ex,
-            )
+            # Yield ErrorInfo for ALL columns that would have been populated
+            yield ErrorInfo(repo, (self.__class__.__name__, "stars"), ex)
+            yield ErrorInfo(repo, (self.__class__.__name__, "forks"), ex)
+            yield ErrorInfo(repo, (self.__class__.__name__, "watchers"), ex)
+            yield ErrorInfo(repo, (self.__class__.__name__, "archived"), ex)
+
+            # Also yield error for cicd_status since it depends on default_branch from this method
+            yield ErrorInfo(repo, (self.__class__.__name__, "cicd_status"), ex)
 
     # ----------------------------------------------------------------------
     async def _GenerateIssueInfo(

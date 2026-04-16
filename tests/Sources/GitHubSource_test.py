@@ -1324,14 +1324,17 @@ class TestRepoApiErrorHandling:
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
-    async def test_repo_api_error_does_not_yield_forks_watchers(self, github_repo: Repository) -> None:
-        """Repository API error means forks, watchers are not yielded (but issues still run separately)."""
+    async def test_repo_api_error_yields_errors_for_all_standard_columns(
+        self, github_repo: Repository
+    ) -> None:
+        """Repository API error yields ErrorInfo for all columns from _GenerateStandardInfo."""
 
         responses = [
             create_mock_response({}, status=404),  # Repo not found
             create_mock_response([]),  # Issues API (still runs independently)
             create_mock_response([]),  # PRs API
             create_mock_response([]),  # Security alerts API
+            create_mock_response({}, status=404),  # Release API
         ]
         session = create_mock_session(responses)
         source = GitHubSource(session)
@@ -1340,13 +1343,22 @@ class TestRepoApiErrorHandling:
 
         result_keys = [r.key[1] for r in results]
 
-        # When repo API fails, we only get ErrorInfo for stars, but issues, PRs and security_alerts still run
+        # When repo API fails, we should get ErrorInfo for ALL columns from _GenerateStandardInfo
+        # (stars, forks, watchers, archived, cicd_status) plus other independent API results
         assert "stars" in result_keys
-        assert "forks" not in result_keys
-        assert "watchers" not in result_keys
-        assert "issues" in result_keys  # Issues now runs independently
+        assert "forks" in result_keys
+        assert "watchers" in result_keys
+        assert "archived" in result_keys
+        assert "cicd_status" in result_keys  # cicd_status depends on default_branch from standard info
+        assert "issues" in result_keys  # Issues runs independently
         assert "pull_requests" in result_keys
         assert "security_alerts" in result_keys
+
+        # Verify stars, forks, watchers, archived, cicd_status are all ErrorInfo
+        standard_columns = ["stars", "forks", "watchers", "archived", "cicd_status"]
+        for key in standard_columns:
+            result = next(r for r in results if r.key[1] == key)
+            assert isinstance(result, ErrorInfo), f"{key} should be ErrorInfo when repo API fails"
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
