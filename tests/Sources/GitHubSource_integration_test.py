@@ -221,17 +221,29 @@ class TestGitHubSourceQuery:
 
         results = [info async for info in source.Query(repo)]
 
-        # Five API calls for nonexistent repos (stars, issues, pull_requests, security_alerts, release)
-        # CI/CD is skipped because we don't have default_branch when repo API fails
-        # Note: release returns ResultInfo with "-" when no releases found (404)
-        assert len(results) == 5
-        assert results[0].key == ("GitHubSource", "stars")
-        assert results[1].key == ("GitHubSource", "issues")
-        assert results[2].key == ("GitHubSource", "pull_requests")
-        assert results[3].key == ("GitHubSource", "security_alerts")
-        assert results[4].key == ("GitHubSource", "release")
-        # First four results are errors, release may be a ResultInfo (404 handled gracefully)
-        assert all(isinstance(r, ErrorInfo) for r in results[:4])
+        # 9 results for nonexistent repos:
+        # - _GenerateStandardInfo fails: yields 5 ErrorInfo (stars, forks, watchers, archived, cicd_status)
+        # - _GenerateIssueInfo: 1 ErrorInfo
+        # - _GeneratePullRequestInfo: 1 ErrorInfo
+        # - _GenerateSecurityAlertInfo: 1 ErrorInfo
+        # - _GenerateReleaseInfo: 1 ResultInfo (404 handled gracefully, returns "-")
+        assert len(results) == 9
+
+        # Verify all expected keys are present
+        result_keys = [r.key[1] for r in results]
+        assert "stars" in result_keys
+        assert "forks" in result_keys
+        assert "watchers" in result_keys
+        assert "archived" in result_keys
+        assert "cicd_status" in result_keys
+        assert "issues" in result_keys
+        assert "pull_requests" in result_keys
+        assert "security_alerts" in result_keys
+        assert "release" in result_keys
+
+        # First 8 results are errors, release may be a ResultInfo (404 handled gracefully)
+        error_results = [r for r in results if r.key[1] != "release"]
+        assert all(isinstance(r, ErrorInfo) for r in error_results)
 
 
 # ----------------------------------------------------------------------

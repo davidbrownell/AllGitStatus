@@ -1553,3 +1553,253 @@ class TestPendingIconDisplay:
                 # Verify no pending icons for row 1 (not refreshed)
                 row_1_pending = [c for c in pending_updates if c.row == 1]
                 assert len(row_1_pending) == 0, "Should not have pending icons for non-refreshed row"
+
+
+# ----------------------------------------------------------------------
+class TestHourglassReplacementOnError:
+    """Tests for ensuring hourglasses are replaced when errors occur.
+
+    Bug: When an error occurs in a source's Query method, only some columns
+    get the error indicator while others remain as hourglasses (⏳).
+
+    For example, GitHubSource._GenerateStandardInfo yields results for:
+    stars, forks, watchers, archived. When an error occurs, it only yields
+    ONE ErrorInfo for 'stars', leaving forks/watchers/archived as hourglasses.
+    """
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_github_standard_info_error_replaces_all_columns(self, working_dir: Path) -> None:
+        """All GitHubSource columns from _GenerateStandardInfo get error indicators on failure."""
+
+        # Create a repository WITH GitHub remote
+        repos = [create_mock_repository(working_dir / "repo1", "https://github.com/testowner/repo1.git")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        # Mock GitHubSource.Query to yield errors for ALL _GenerateStandardInfo columns
+        # This simulates the FIXED behavior where an error yields ErrorInfo for ALL affected columns
+        async def failing_github_query(repo):
+            # When _GenerateStandardInfo fails, it should yield ErrorInfo for ALL its columns
+            # including cicd_status which depends on default_branch
+            error = ValueError("API rate limit exceeded")
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "stars"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "forks"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "watchers"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "archived"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "cicd_status"), error=error)
+            # Other methods also yield errors
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "issues"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "pull_requests"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "security_alerts"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "release"), error=error)
+
+        # Mock LocalGitSource.Query to complete quickly
+        async def mock_local_query(repo):
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "current_branch"),
+                display_value="main",
+                additional_info="Branch: main",
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "local_status"),
+                display_value="  0 ✅   0 🟡    0 ❓",
+                additional_info="<No local changes>",
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "stashes"),
+                display_value="  0 🧺",
+                additional_info="<No stashes>",
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "remote_status"),
+                display_value="  0 🔼   0 🔽",
+                additional_info="<No remote changes>",
+                state_data={"has_local_changes": False, "has_remote_changes": False},
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=mock_local_query),
+            patch("AllGitStatus.MainApp.GitHubSource.Query", side_effect=failing_github_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat="test_pat")
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.3)
+                await pilot.pause()
+
+                # Check that ALL columns that were set to hourglass are now replaced with error indicators
+                stars_cell = app._data_table.get_cell_at(Coordinate(0, StarsColumn.value))
+                forks_cell = app._data_table.get_cell_at(Coordinate(0, ForksColumn.value))
+                watchers_cell = app._data_table.get_cell_at(Coordinate(0, WatchersColumn.value))
+                archived_cell = app._data_table.get_cell_at(Coordinate(0, ArchivedColumn.value))
+
+                # All columns should have error indicator
+                assert "💥" in str(stars_cell), f"Stars should show error, got: {stars_cell}"
+                assert "💥" in str(forks_cell), f"Forks should show error, got: {forks_cell}"
+                assert "💥" in str(watchers_cell), f"Watchers should show error, got: {watchers_cell}"
+                assert "💥" in str(archived_cell), f"Archived should show error, got: {archived_cell}"
+
+                # Verify no hourglasses remain
+                assert "⏳" not in str(forks_cell), f"Forks should not show hourglass, got: {forks_cell}"
+                assert "⏳" not in str(watchers_cell), (
+                    f"Watchers should not show hourglass, got: {watchers_cell}"
+                )
+                assert "⏳" not in str(archived_cell), (
+                    f"Archived should not show hourglass, got: {archived_cell}"
+                )
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_github_issues_error_replaces_column(self, working_dir: Path) -> None:
+        """GitHubSource issues column gets error indicator on failure."""
+
+        repos = [create_mock_repository(working_dir / "repo1", "https://github.com/testowner/repo1.git")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        async def failing_github_query(repo):
+            # Standard info succeeds
+            yield ResultInfo(
+                repo=repo, key=("GitHubSource", "stars"), display_value="   42 ⭐", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo, key=("GitHubSource", "forks"), display_value="   10 🍴", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo, key=("GitHubSource", "watchers"), display_value="    5 👀", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo, key=("GitHubSource", "archived"), display_value="", additional_info=""
+            )
+            # Issues fails
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "issues"), error=ValueError("API error"))
+
+        async def mock_local_query(repo):
+            yield ResultInfo(
+                repo=repo, key=("LocalGitSource", "current_branch"), display_value="main", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "local_status"),
+                display_value="  0 ✅   0 🟡    0 ❓",
+                additional_info="",
+            )
+            yield ResultInfo(
+                repo=repo, key=("LocalGitSource", "stashes"), display_value="  0 🧺", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "remote_status"),
+                display_value="  0 🔼   0 🔽",
+                additional_info="",
+                state_data={"has_local_changes": False, "has_remote_changes": False},
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=mock_local_query),
+            patch("AllGitStatus.MainApp.GitHubSource.Query", side_effect=failing_github_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat="test_pat")
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.3)
+                await pilot.pause()
+
+                issues_cell = app._data_table.get_cell_at(Coordinate(0, IssuesColumn.value))
+                assert "💥" in str(issues_cell), f"Issues should show error, got: {issues_cell}"
+                assert "⏳" not in str(issues_cell), f"Issues should not show hourglass, got: {issues_cell}"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_all_github_columns_replaced_on_complete_failure(self, working_dir: Path) -> None:
+        """When GitHubSource Query fails completely, all GitHub columns should be error or empty."""
+
+        repos = [create_mock_repository(working_dir / "repo1", "https://github.com/testowner/repo1.git")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        # Simulate complete failure - yields errors for ALL columns (fixed behavior)
+        async def complete_failure_github_query(repo):
+            error = ValueError("Network error")
+            # _GenerateStandardInfo fails - yields errors for all its columns including cicd_status
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "stars"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "forks"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "watchers"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "archived"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "cicd_status"), error=error)
+            # Other methods also fail
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "issues"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "pull_requests"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "security_alerts"), error=error)
+            yield ErrorInfo(repo=repo, key=("GitHubSource", "release"), error=error)
+
+        async def mock_local_query(repo):
+            yield ResultInfo(
+                repo=repo, key=("LocalGitSource", "current_branch"), display_value="main", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "local_status"),
+                display_value="  0 ✅   0 🟡    0 ❓",
+                additional_info="",
+            )
+            yield ResultInfo(
+                repo=repo, key=("LocalGitSource", "stashes"), display_value="  0 🧺", additional_info=""
+            )
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "remote_status"),
+                display_value="  0 🔼   0 🔽",
+                additional_info="",
+                state_data={"has_local_changes": False, "has_remote_changes": False},
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=mock_local_query),
+            patch("AllGitStatus.MainApp.GitHubSource.Query", side_effect=complete_failure_github_query),
+        ):
+            app = MainApp(working_dir=working_dir, github_pat="test_pat")
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.3)
+                await pilot.pause()
+
+                # ALL GitHub columns should NOT have hourglasses
+                github_columns = [
+                    (StarsColumn, "Stars"),
+                    (ForksColumn, "Forks"),
+                    (WatchersColumn, "Watchers"),
+                    (IssuesColumn, "Issues"),
+                    (PullRequestsColumn, "PRs"),
+                    (SecurityAlertsColumn, "Security"),
+                    (CICDStatusColumn, "CI/CD"),
+                    (ReleaseColumn, "Release"),
+                    (ArchivedColumn, "Archived"),
+                ]
+
+                for column, name in github_columns:
+                    cell = app._data_table.get_cell_at(Coordinate(0, column.value))
+                    # Should be error indicator - NOT hourglass
+                    assert "💥" in str(cell), (
+                        f"{name} column should show error after query fails, got: {cell}"
+                    )
+                    assert "⏳" not in str(cell), (
+                        f"{name} column should not show hourglass after query completes, got: {cell}"
+                    )
