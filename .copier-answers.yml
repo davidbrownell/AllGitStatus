@@ -1,12 +1,12 @@
 # Changes here will be overwritten by Copier; DO NOT MODIFY THIS FILE DIRECTLY!
 #
 # This file was generated using copier (https://copier.readthedocs.io/) with the
-# template copier-UvScaffolding (https://github.com/gt-sse-center/copier-UvScaffolding).
+# template copier-UvScaffolding (https://github.com/gt-csse/copier-UvScaffolding).
 # Additional information (including instructions on how to use this template with copier) is
-# available at https://github.com/gt-sse-center/copier-UvScaffolding.
+# available at https://github.com/gt-csse/copier-UvScaffolding.
 #
 
-_commit: v0.5.6
+_commit: v0.5.11
 _src_path: .
 author_email: github@DavidBrownell.com
 author_name: David Brownell
