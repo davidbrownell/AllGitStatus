@@ -119,7 +119,7 @@ class GitHubSource(Source):
                 yield ResultInfo(
                     repo,
                     (self.__class__.__name__, "archived"),
-                    "📦" if is_archived else "",
+                    "📦" if is_archived else "-",
                     f"Archived: {'Yes' if is_archived else 'No'}",
                 )
 

@@ -376,7 +376,7 @@ class TestArchived:
         archived_result = next(r for r in results if r.key[1] == "archived")
 
         assert isinstance(archived_result, ResultInfo)
-        assert archived_result.display_value == ""
+        assert archived_result.display_value == "-"
         assert archived_result.additional_info == "Archived: No"
 
     # ----------------------------------------------------------------------
@@ -408,7 +408,7 @@ class TestArchived:
         archived_result = next(r for r in results if r.key[1] == "archived")
 
         assert isinstance(archived_result, ResultInfo)
-        assert archived_result.display_value == ""
+        assert archived_result.display_value == "-"
         assert archived_result.additional_info == "Archived: No"
 
 
