@@ -19,6 +19,7 @@ from AllGitStatus.Repository import EnumerateRepositories, Repository
 from AllGitStatus.Sources.GitHubSource import GitHubSource
 from AllGitStatus.Sources.LocalGitSource import LocalGitSource
 from AllGitStatus.Sources.Source import ErrorInfo, ResultInfo
+from AllGitStatus.Sources.UvAuditSource import UvAuditSource
 
 
 # ----------------------------------------------------------------------
@@ -47,6 +48,7 @@ SecurityAlertsColumn = Column(10, "Security", "center")
 CICDStatusColumn = Column(11, "CI/CD", "center")
 ReleaseColumn = Column(12, "Release", "center")
 ArchivedColumn = Column(13, "Archived", "center")
+UvAuditColumn = Column(14, "uv audit", "center")
 
 COLUMN_MAP: dict[
     tuple[
@@ -69,6 +71,7 @@ COLUMN_MAP: dict[
     (GitHubSource.__name__, "cicd_status"): CICDStatusColumn,
     (GitHubSource.__name__, "release"): ReleaseColumn,
     (GitHubSource.__name__, "archived"): ArchivedColumn,
+    (UvAuditSource.__name__, "uv_audit"): UvAuditColumn,
 }
 
 
@@ -321,6 +324,7 @@ class MainApp(App):
             sources = [
                 LocalGitSource(),
                 GitHubSource(self._github_session),
+                UvAuditSource(),
             ]
 
             # Set all of the column values to pending
