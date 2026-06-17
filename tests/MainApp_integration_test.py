@@ -32,6 +32,7 @@ from AllGitStatus.MainApp import (
     SecurityAlertsColumn,
     StarsColumn,
     StashesColumn,
+    UvAuditColumn,
     WatchersColumn,
     _GetRepositoriesModal,
 )
@@ -981,6 +982,7 @@ class TestColumnDefinitions:
             CICDStatusColumn,
             ReleaseColumn,
             ArchivedColumn,
+            UvAuditColumn,
         }
 
         assert unique_columns == expected_columns

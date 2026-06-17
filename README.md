@@ -54,6 +54,10 @@ https://github.com/user-attachments/assets/596e3791-ce25-4872-8102-a004c22e5286
 - CI/CD workflow status (✅❌⏳)
 - Repository archived status (📦)
 
+#### Python Dependency Auditing (requires [uv](https://github.com/astral-sh/uv)):
+
+- Vulnerability scanning via `uv audit` for Python repositories (✅⚠️)
+
 ### How to use `AllGitStatus`
 
 Run directly with `uvx` (no installation required):
