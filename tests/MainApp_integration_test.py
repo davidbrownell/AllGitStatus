@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
+from rich.spinner import Spinner
 from rich.text import Text
 from textual.coordinate import Coordinate
 from textual.widgets import DataTable, Footer, Header, Label, RichLog
@@ -55,6 +56,7 @@ def create_mock_repository(path: Path, remote_url: str | None = None) -> Reposit
     )
 
 
+# ----------------------------------------------------------------------
 async def mock_enumerate_repositories(working_dir: Path):
     """Mock repository enumeration that yields test repositories."""
 
@@ -67,6 +69,7 @@ async def mock_enumerate_repositories(working_dir: Path):
         yield repo
 
 
+# ----------------------------------------------------------------------
 def create_mock_result_info(
     repo: Repository,
     key: tuple[str, str],
@@ -86,6 +89,16 @@ def create_mock_result_info(
 
 
 # ----------------------------------------------------------------------
+SPINNER_FRAMES: tuple[str, ...] = tuple(Spinner("dots").frames)
+
+
+def is_pending_cell(value: object) -> bool:
+    """Return True if the cell displays a frame of the animated loading spinner."""
+
+    return str(value).strip() in SPINNER_FRAMES
+
+
+# ----------------------------------------------------------------------
 # |  Fixtures
 # ----------------------------------------------------------------------
 @pytest.fixture
@@ -95,6 +108,7 @@ def working_dir(tmp_path: Path) -> Path:
     return tmp_path / "working_dir"
 
 
+# ----------------------------------------------------------------------
 @pytest.fixture
 def mock_repos(working_dir: Path) -> list[Repository]:
     """Create mock repositories for testing."""
@@ -1109,7 +1123,7 @@ class TestMainAppDebugMode:
 
 # ----------------------------------------------------------------------
 class TestPendingIconDisplay:
-    """Tests for pending icon (⏳) display before column data is loaded."""
+    """Tests for animated loading spinner display before column data is loaded."""
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
@@ -1161,11 +1175,10 @@ class TestPendingIconDisplay:
                 stashes_cell = app._data_table.get_cell_at(Coordinate(0, StashesColumn.value))
                 remote_cell = app._data_table.get_cell_at(Coordinate(0, RemoteColumn.value))
 
-                # Verify at least one column shows the pending icon
-                # The pending icon is ⏳
-                cells_content = [str(branch_cell), str(local_cell), str(stashes_cell), str(remote_cell)]
-                has_pending = any("⏳" in cell for cell in cells_content)
-                assert has_pending, f"Expected pending icon in at least one cell, got: {cells_content}"
+                # Verify at least one column shows the loading spinner
+                cells = [branch_cell, local_cell, stashes_cell, remote_cell]
+                has_pending = any(is_pending_cell(cell) for cell in cells)
+                assert has_pending, f"Expected loading spinner in at least one cell, got: {cells}"
 
                 # Allow the test to complete
                 query_can_continue.set()
@@ -1227,9 +1240,9 @@ class TestPendingIconDisplay:
                 stars_cell = app._data_table.get_cell_at(Coordinate(0, StarsColumn.value))
                 forks_cell = app._data_table.get_cell_at(Coordinate(0, ForksColumn.value))
 
-                # Verify GitHub columns have pending icons
-                assert "⏳" in str(stars_cell) or "⏳" in str(forks_cell), (
-                    f"Expected pending icon in GitHub columns, got stars={stars_cell}, forks={forks_cell}"
+                # Verify GitHub columns show the loading spinner
+                assert is_pending_cell(stars_cell) or is_pending_cell(forks_cell), (
+                    f"Expected loading spinner in GitHub columns, got stars={stars_cell}, forks={forks_cell}"
                 )
 
                 # Allow completion
@@ -1305,10 +1318,10 @@ class TestPendingIconDisplay:
                 await app._PopulateCell(0, result_info)
                 await pilot.pause()
 
-                # The cell should now show "main", not the pending icon
+                # The cell should now show "main", not the loading spinner
                 branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
                 assert "main" in str(branch_cell)
-                assert "⏳" not in str(branch_cell)
+                assert not is_pending_cell(branch_cell)
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
@@ -1339,10 +1352,10 @@ class TestPendingIconDisplay:
                 await app._PopulateCell(0, error_info)
                 await pilot.pause()
 
-                # The cell should now show the error indicator, not pending icon
+                # The cell should now show the error indicator, not the loading spinner
                 branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
                 assert "💥" in str(branch_cell)
-                assert "⏳" not in str(branch_cell)
+                assert not is_pending_cell(branch_cell)
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
@@ -1375,10 +1388,10 @@ class TestPendingIconDisplay:
                 await asyncio.sleep(0.2)
                 await pilot.pause()
 
-                # Find pending icon updates for different columns
-                pending_updates = [(coord, text) for coord, text in captured_texts if str(text) == "⏳"]
+                # Find spinner updates for different columns
+                pending_updates = [(coord, text) for coord, text in captured_texts if is_pending_cell(text)]
 
-                # Verify that pending icons were set with proper justify
+                # Verify that spinner cells were set with proper justify
                 for coord, text in pending_updates:
                     column = next(
                         (c for c in COLUMN_MAP.values() if c.value == coord.column),
@@ -1403,7 +1416,7 @@ class TestPendingIconDisplay:
         original_update_cell_at = DataTable.update_cell_at
 
         def track_pending_updates(self, coordinate, value, **kwargs):
-            if isinstance(value, Text) and str(value) == "⏳":
+            if isinstance(value, Text) and is_pending_cell(value):
                 pending_columns.add(coordinate.column)
             return original_update_cell_at(self, coordinate, value, **kwargs)
 
@@ -1463,7 +1476,7 @@ class TestPendingIconDisplay:
         original_update_cell_at = DataTable.update_cell_at
 
         def track_pending_updates(self, coordinate, value, **kwargs):
-            if isinstance(value, Text) and str(value) == "⏳":
+            if isinstance(value, Text) and is_pending_cell(value):
                 pending_columns.add(coordinate.column)
             return original_update_cell_at(self, coordinate, value, **kwargs)
 
@@ -1537,7 +1550,7 @@ class TestPendingIconDisplay:
                 original_update_cell_at = DataTable.update_cell_at
 
                 def track_refresh_pending(self, coordinate, value, **kwargs):  # noqa: ARG001
-                    if isinstance(value, Text) and str(value) == "⏳":
+                    if isinstance(value, Text) and is_pending_cell(value):
                         pending_updates.append(coordinate)
                     return original_update_cell_at(self, coordinate, value, **kwargs)
 
@@ -1559,14 +1572,14 @@ class TestPendingIconDisplay:
 
 # ----------------------------------------------------------------------
 class TestHourglassReplacementOnError:
-    """Tests for ensuring hourglasses are replaced when errors occur.
+    """Tests for ensuring loading spinners are replaced when errors occur.
 
     Bug: When an error occurs in a source's Query method, only some columns
-    get the error indicator while others remain as hourglasses (⏳).
+    get the error indicator while others remain as loading spinners.
 
     For example, GitHubSource._GenerateStandardInfo yields results for:
     stars, forks, watchers, archived. When an error occurs, it only yields
-    ONE ErrorInfo for 'stars', leaving forks/watchers/archived as hourglasses.
+    ONE ErrorInfo for 'stars', leaving forks/watchers/archived as spinners.
     """
 
     # ----------------------------------------------------------------------
@@ -1638,7 +1651,7 @@ class TestHourglassReplacementOnError:
                 await asyncio.sleep(0.3)
                 await pilot.pause()
 
-                # Check that ALL columns that were set to hourglass are now replaced with error indicators
+                # Check that ALL columns that were set to a spinner are now replaced with error indicators
                 stars_cell = app._data_table.get_cell_at(Coordinate(0, StarsColumn.value))
                 forks_cell = app._data_table.get_cell_at(Coordinate(0, ForksColumn.value))
                 watchers_cell = app._data_table.get_cell_at(Coordinate(0, WatchersColumn.value))
@@ -1650,13 +1663,13 @@ class TestHourglassReplacementOnError:
                 assert "💥" in str(watchers_cell), f"Watchers should show error, got: {watchers_cell}"
                 assert "💥" in str(archived_cell), f"Archived should show error, got: {archived_cell}"
 
-                # Verify no hourglasses remain
-                assert "⏳" not in str(forks_cell), f"Forks should not show hourglass, got: {forks_cell}"
-                assert "⏳" not in str(watchers_cell), (
-                    f"Watchers should not show hourglass, got: {watchers_cell}"
+                # Verify no spinners remain
+                assert not is_pending_cell(forks_cell), f"Forks should not show spinner, got: {forks_cell}"
+                assert not is_pending_cell(watchers_cell), (
+                    f"Watchers should not show spinner, got: {watchers_cell}"
                 )
-                assert "⏳" not in str(archived_cell), (
-                    f"Archived should not show hourglass, got: {archived_cell}"
+                assert not is_pending_cell(archived_cell), (
+                    f"Archived should not show spinner, got: {archived_cell}"
                 )
 
     # ----------------------------------------------------------------------
@@ -1722,7 +1735,7 @@ class TestHourglassReplacementOnError:
 
                 issues_cell = app._data_table.get_cell_at(Coordinate(0, IssuesColumn.value))
                 assert "💥" in str(issues_cell), f"Issues should show error, got: {issues_cell}"
-                assert "⏳" not in str(issues_cell), f"Issues should not show hourglass, got: {issues_cell}"
+                assert not is_pending_cell(issues_cell), f"Issues should not show spinner, got: {issues_cell}"
 
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
@@ -1783,7 +1796,7 @@ class TestHourglassReplacementOnError:
                 await asyncio.sleep(0.3)
                 await pilot.pause()
 
-                # ALL GitHub columns should NOT have hourglasses
+                # ALL GitHub columns should NOT have spinners
                 github_columns = [
                     (StarsColumn, "Stars"),
                     (ForksColumn, "Forks"),
@@ -1798,10 +1811,10 @@ class TestHourglassReplacementOnError:
 
                 for column, name in github_columns:
                     cell = app._data_table.get_cell_at(Coordinate(0, column.value))
-                    # Should be error indicator - NOT hourglass
+                    # Should be error indicator - NOT a spinner
                     assert "💥" in str(cell), (
                         f"{name} column should show error after query fails, got: {cell}"
                     )
-                    assert "⏳" not in str(cell), (
-                        f"{name} column should not show hourglass after query completes, got: {cell}"
+                    assert not is_pending_cell(cell), (
+                        f"{name} column should not show spinner after query completes, got: {cell}"
                     )
