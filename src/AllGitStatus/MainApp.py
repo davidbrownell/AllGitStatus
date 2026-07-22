@@ -3,9 +3,12 @@ import contextlib
 import textwrap
 
 from dataclasses import dataclass
+from itertools import cycle
 from pathlib import Path
 
 import aiohttp
+
+from rich.spinner import Spinner
 from rich.text import Text
 from rich.traceback import Traceback
 from textual.app import App, ComposeResult, ScreenStackError
@@ -139,6 +142,14 @@ class MainApp(App):
         # requires an active event loop
         self._github_session: aiohttp.ClientSession | None = None
 
+        # Loading cells
+        self._spinner_iter = cycle(Spinner("dots").frames)
+        self._spinner_frame = next(self._spinner_iter)
+        self._spinner_cells: dict[
+            Coordinate,
+            str,  # justify
+        ] = {}
+
     # ----------------------------------------------------------------------
     def compose(self) -> ComposeResult:  # noqa: D102
         yield Header()
@@ -158,6 +169,18 @@ class MainApp(App):
 
         for column in COLUMN_MAP.values():
             self._data_table.add_column(Text(column.name, justify=column.justify))  # ty: ignore[invalid-argument-type]
+
+        # Advance the loading spinner shown in pending cells.
+        # ----------------------------------------------------------------------
+        def AdvanceSpinners() -> None:
+            self._spinner_frame = next(self._spinner_iter)
+
+            for coordinate, justify in self._spinner_cells.items():
+                self._data_table.update_cell_at(coordinate, self._RenderSpinner(justify))
+
+        # ----------------------------------------------------------------------
+
+        self.set_interval(1.0 / 12.0, AdvanceSpinners)
 
         await self._ResetAllRepositories()
 
@@ -259,6 +282,7 @@ class MainApp(App):
         self._additional_info_data.clear()
         self._state_data.clear()
         self._data_table.clear()
+        self._spinner_cells.clear()
 
         await self._OnSelectionChanged()
 
@@ -287,10 +311,10 @@ class MainApp(App):
         self._state_data.pop(repository_index, None)
 
         for column in COLUMN_MAP.values():
-            self._data_table.update_cell_at(
-                Coordinate(repository_index, column.value),
-                "",
-            )
+            coordinate = Coordinate(repository_index, column.value)
+
+            self._spinner_cells.pop(coordinate, None)
+            self._data_table.update_cell_at(coordinate, "")
 
         if repository_index == self._data_table.cursor_coordinate.row:
             await self._OnSelectionChanged()
@@ -339,9 +363,14 @@ class MainApp(App):
                     if column_key[0] != source.__class__.__name__:
                         continue
 
+                    # Set the spinner value
+                    coordinate = Coordinate(repository_index, column.value)
+
+                    self._spinner_cells[coordinate] = column.justify
+
                     self._data_table.update_cell_at(
-                        Coordinate(repository_index, column.value),
-                        Text("⏳", justify=column.justify),  # ty: ignore[invalid-argument-type]
+                        coordinate,
+                        self._RenderSpinner(column.justify),
                         update_width=True,
                     )
 
@@ -382,8 +411,12 @@ class MainApp(App):
         else:
             assert False, info  # noqa: B011, PT015  # pragma: no cover
 
+        coordinate = Coordinate(repository_index, column.value)
+
+        self._spinner_cells.pop(coordinate, None)
+
         self._data_table.update_cell_at(
-            Coordinate(repository_index, column.value),
+            coordinate,
             Text(display_value, justify=column.justify),  # ty: ignore[invalid-argument-type]
             update_width=True,
         )
@@ -392,6 +425,10 @@ class MainApp(App):
 
         if self._data_table.cursor_row == repository_index and self._data_table.cursor_column == column.value:
             await self._OnSelectionChanged()
+
+    # ----------------------------------------------------------------------
+    def _RenderSpinner(self, justify: str) -> Text:
+        return Text(self._spinner_frame, justify=justify)  # ty: ignore[invalid-argument-type]
 
     # ----------------------------------------------------------------------
     async def _OnSelectionChanged(self) -> None:
