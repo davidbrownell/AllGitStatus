@@ -1323,6 +1323,95 @@ class TestPendingIconDisplay:
                 assert "main" in str(branch_cell)
                 assert not is_pending_cell(branch_cell)
 
+                # A mainline branch is not highlighted
+                assert branch_cell.style == ""
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_master_branch_is_highlighted_red(self, working_dir: Path) -> None:
+        """The "master" branch is rendered in red."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                await app._PopulateCell(
+                    0,
+                    ResultInfo(
+                        repo=repos[0],
+                        key=("LocalGitSource", "current_branch"),
+                        display_value="master",
+                        additional_info="Branch: master",
+                    ),
+                )
+                await pilot.pause()
+
+                # The cell shows "master" and is highlighted in red
+                branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
+                assert "master" in str(branch_cell)
+                assert not is_pending_cell(branch_cell)
+                assert branch_cell.style == "red"
+
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_non_mainline_branch_is_highlighted(self, working_dir: Path) -> None:
+        """A non-mainline branch name is rendered in yellow; a mainline branch is not."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        with patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                # A non-mainline branch is highlighted in yellow
+                await app._PopulateCell(
+                    0,
+                    ResultInfo(
+                        repo=repos[0],
+                        key=("LocalGitSource", "current_branch"),
+                        display_value="feature/my-branch",
+                        additional_info="",
+                    ),
+                )
+                await pilot.pause()
+
+                branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
+                assert "feature/my-branch" in str(branch_cell)
+                assert branch_cell.style == "yellow"
+
+                # Switching back to the "main" branch clears the highlight
+                await app._PopulateCell(
+                    0,
+                    ResultInfo(
+                        repo=repos[0],
+                        key=("LocalGitSource", "current_branch"),
+                        display_value="main",
+                        additional_info="",
+                    ),
+                )
+                await pilot.pause()
+
+                branch_cell = app._data_table.get_cell_at(Coordinate(0, BranchColumn.value))
+                assert branch_cell.style == ""
+
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_pending_icon_replaced_with_error_indicator(self, working_dir: Path) -> None:
