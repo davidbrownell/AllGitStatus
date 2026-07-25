@@ -26,7 +26,6 @@ from AllGitStatus.Sources.UvAuditSource import UvAuditSource
 
 
 # ----------------------------------------------------------------------
-# ----------------------------------------------------------------------
 @dataclass(frozen=True)
 class Column:
     """Column displayed within a data table."""
@@ -389,6 +388,7 @@ class MainApp(App):
     # ----------------------------------------------------------------------
     async def _PopulateCell(self, repository_index: int, info: ResultInfo | ErrorInfo) -> None:
         column = COLUMN_MAP[info.key]
+        style = ""
 
         if isinstance(info, ErrorInfo):
             display_value = "💥"
@@ -401,6 +401,12 @@ class MainApp(App):
         elif isinstance(info, ResultInfo):
             display_value = info.display_value
             additional_info = info.additional_info
+
+            if column is BranchColumn:
+                if display_value == "master":
+                    style = "red"
+                elif display_value != "main":
+                    style = "yellow"
 
             if info.state_data is not None:
                 self._state_data.setdefault(repository_index, {})[column.value] = info.state_data
@@ -417,7 +423,7 @@ class MainApp(App):
 
         self._data_table.update_cell_at(
             coordinate,
-            Text(display_value, justify=column.justify),  # ty: ignore[invalid-argument-type]
+            Text(display_value, justify=column.justify, style=style),  # ty: ignore[invalid-argument-type]
             update_width=True,
         )
 
