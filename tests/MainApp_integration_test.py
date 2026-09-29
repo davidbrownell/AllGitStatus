@@ -637,6 +637,80 @@ class TestMainAppActions:
                 # Push should have been called
                 mock_push.assert_called_once()
 
+    # ----------------------------------------------------------------------
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("command_name", "key", "state_data"),
+        [
+            ("Pull", "p", {"has_remote_changes": True, "has_local_changes": False}),
+            ("Push", "P", {"has_remote_changes": False, "has_local_changes": True}),
+        ],
+    )
+    async def test_action_remote_command_failure_notifies(
+        self,
+        working_dir: Path,
+        command_name: str,
+        key: str,
+        state_data: dict[str, bool],
+    ) -> None:
+        """A failed pull/push displays an error notification and refreshes the repository rather than crashing."""
+
+        repos = [create_mock_repository(working_dir / "repo1")]
+
+        async def mock_enum(wd):
+            for repo in repos:
+                yield repo
+
+        async def mock_local_query(repo):
+            yield ResultInfo(
+                repo=repo,
+                key=("LocalGitSource", "current_branch"),
+                display_value="main",
+                additional_info="Branch: main",
+            )
+
+        with (
+            patch("AllGitStatus.MainApp.EnumerateRepositories", side_effect=mock_enum),
+            patch("AllGitStatus.MainApp.LocalGitSource.Query", side_effect=mock_local_query) as mock_query,
+            patch.object(
+                LocalGitSource,
+                command_name,
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("git failure output"),
+            ) as mock_command,
+            patch.object(MainApp, "notify") as mock_notify,
+        ):
+            app = MainApp(working_dir=working_dir, github_pat=None)
+
+            async with app.run_test() as pilot:
+                # Wait for initial load
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                app._state_data[0] = {RemoteColumn.value: state_data}
+                app.refresh_bindings()
+                await pilot.pause()
+
+                # Ignore the query from the initial load
+                mock_query.reset_mock()
+
+                await pilot.press(key)
+                await pilot.pause()
+                await asyncio.sleep(0.1)
+                await pilot.pause()
+
+                mock_command.assert_called_once()
+                mock_notify.assert_called_once_with(
+                    "git failure output",
+                    title=f"{command_name} failed: repo1",
+                    severity="error",
+                    timeout=30,
+                    markup=False,
+                )
+                mock_query.assert_called_once_with(repos[0])
+                assert app.is_running
+
 
 # ----------------------------------------------------------------------
 class TestMainAppPopulateCell:

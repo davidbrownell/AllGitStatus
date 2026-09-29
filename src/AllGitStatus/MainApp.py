@@ -2,6 +2,7 @@
 import contextlib
 import textwrap
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from itertools import cycle
 from pathlib import Path
@@ -209,21 +210,11 @@ class MainApp(App):
 
     # ----------------------------------------------------------------------
     async def action_PullSelected(self) -> None:  # noqa: D102
-        assert self._repositories is not None
-
-        repository = self._repositories[self._data_table.cursor_coordinate.row]
-
-        await LocalGitSource.Pull(repository)
-        await self._ResetRepository(repository, self._data_table.cursor_coordinate.row)
+        await self._ExecuteRemoteCommand("Pull", LocalGitSource.Pull)
 
     # ----------------------------------------------------------------------
     async def action_PushSelected(self) -> None:  # noqa: D102
-        assert self._repositories is not None
-
-        repository = self._repositories[self._data_table.cursor_coordinate.row]
-
-        await LocalGitSource.Push(repository)
-        await self._ResetRepository(repository, self._data_table.cursor_coordinate.row)
+        await self._ExecuteRemoteCommand("Push", LocalGitSource.Push)
 
     # ----------------------------------------------------------------------
     def key_1(self) -> None:  # noqa: D102
@@ -319,15 +310,9 @@ class MainApp(App):
             await self._OnSelectionChanged()
             self._RefreshBindings()
 
-        # Create the repo name
-        if repository.path == self._working_dir:
-            repo_name = repository.path.name
-        else:
-            repo_name = str(repository.path.relative_to(self._working_dir))
-
         self._data_table.update_cell_at(
             Coordinate(repository_index, NameColumn.value),
-            Text(f"📂 {repo_name}", justify=NameColumn.justify),  # ty: ignore[invalid-argument-type]
+            Text(f"📂 {self._GetRepositoryName(repository)}", justify=NameColumn.justify),  # ty: ignore[invalid-argument-type]
             update_width=True,
         )
 
@@ -384,6 +369,39 @@ class MainApp(App):
         # ----------------------------------------------------------------------
 
         self.run_worker(LoadCells())
+
+    # ----------------------------------------------------------------------
+    def _GetRepositoryName(self, repository: Repository) -> str:
+        if repository.path == self._working_dir:
+            return repository.path.name
+
+        return str(repository.path.relative_to(self._working_dir))
+
+    # ----------------------------------------------------------------------
+    async def _ExecuteRemoteCommand(
+        self,
+        command_name: str,
+        command_func: Callable[[Repository], Awaitable[None]],
+    ) -> None:
+        assert self._repositories is not None
+
+        repository_index = self._data_table.cursor_coordinate.row
+        repository = self._repositories[repository_index]
+
+        try:
+            await command_func(repository)
+        except Exception as ex:
+            # Git output may contain brackets that would otherwise be interpreted as markup
+            self.notify(
+                str(ex),
+                title=f"{command_name} failed: {self._GetRepositoryName(repository)}",
+                severity="error",
+                timeout=30,
+                markup=False,
+            )
+
+        # Refresh even on failure, as a failed command may have modified the repository
+        await self._ResetRepository(repository, repository_index)
 
     # ----------------------------------------------------------------------
     async def _PopulateCell(self, repository_index: int, info: ResultInfo | ErrorInfo) -> None:
